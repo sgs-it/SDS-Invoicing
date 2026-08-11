@@ -37,7 +37,13 @@ class Config:
     # Notification / escalation tuning
     DUE_ALERT_DAYS = (7, 3, 1)      # alert these many days before a due date
     ESCALATION_AFTER_DAYS = 1       # escalate this many days after an overdue date
+    
+    # Feature flags
+    # Disable scheduler in Vercel's serverless environment
     SCHEDULER_ENABLED = True
+    if os.environ.get("VERCEL") == "1":
+        SCHEDULER_ENABLED = False
+    
     SCHEDULER_INTERVAL_SECONDS = 3600  # run due-date / escalation sweep every hour
 
     # Optional SMTP (email notifications). Leave SMTP_HOST empty to disable email.
