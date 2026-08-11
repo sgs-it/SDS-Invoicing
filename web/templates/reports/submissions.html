@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Submission · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Submission{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Submission report</h1><div class="sub">{{ rows|length }} submissions with reference numbers and approval status.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.submissions_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Date</th><th>Client / Cycle</th><th>Method</th><th>Reference</th><th>Confirmation</th><th>Status</th><th>Approved</th></tr>
+      {% for s in rows %}
+      <tr>
+        <td class="small">{{ s.submission_date.strftime('%d %b %Y') }}</td>
+        <td class="small"><span class="strong">{{ s.cycle.project.client.name }}</span><br><a href="{{ url_for('invoices.cycle_detail', cycle_id=s.cycle.id) }}">{{ s.cycle.cycle_name[:34] }}</a></td>
+        <td><span class="pill teal">{{ s.submission_method.name }}</span></td>
+        <td class="mono small">{{ s.reference_no or '—' }}</td>
+        <td class="mono small">{{ s.confirmation_no or '—' }}</td>
+        <td><span class="pill {{ {'APPROVED':'green','REJECTED':'red','PENDING_APPROVAL':'amber','SUBMITTED':'blue','RESUBMITTED':'blue'}.get(s.status,'grey') }}">{{ s.status|replace('_',' ')|title }}</span></td>
+        <td class="small">{{ s.approval_date.strftime('%d %b %Y') if s.approval_date else '—' }}</td>
+      </tr>
+      {% else %}<tr><td colspan="7"><div class="empty">No submissions match the filters.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

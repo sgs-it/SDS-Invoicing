@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Monthly Invoice / Revenue · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Monthly{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Monthly invoice / revenue</h1><div class="sub">Invoiced vs received amounts per month.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.monthly_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="grid3" style="margin-bottom:16px;">
+  <div class="card"><div class="card-body center"><div class="huge">{{ CURRENCY }} {{ "{:,.0f}".format(totals.invoiced) }}</div><div class="muted small">Total invoiced</div></div></div>
+  <div class="card"><div class="card-body center"><div class="huge green-text">{{ CURRENCY }} {{ "{:,.0f}".format(totals.received) }}</div><div class="muted small">Total received</div></div></div>
+  <div class="card"><div class="card-body center"><div class="huge">{{ totals.count }}</div><div class="muted small">Invoice cycles</div></div></div>
+</div>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Month</th><th>Cycles</th><th>Invoiced</th><th>Paid count</th><th>Received</th><th>Outstanding</th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="strong mono">{{ r.month }}</td>
+        <td>{{ r.count }}</td>
+        <td>{{ CURRENCY }} {{ "{:,.0f}".format(r.invoiced) }}</td>
+        <td>{{ r.paid }}</td>
+        <td class="green-text">{{ CURRENCY }} {{ "{:,.0f}".format(r.received) }}</td>
+        <td class="red-text">{{ CURRENCY }} {{ "{:,.0f}".format(r.invoiced - r.received) }}</td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">No cycles recorded.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

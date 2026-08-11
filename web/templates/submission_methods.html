@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Submission methods · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Submission methods{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Submission methods</h1><div class="sub">How each project submits its invoices to the client.</div></div>
+</div>
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Method</th><th>Description</th><th>Projects</th><th>Pipeline template</th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="strong">{{ r.name }}</td>
+        <td>{{ r.description or '—' }}</td>
+        <td>{{ r.projects.count() }}</td>
+        <td>
+          {% for t in templates %}
+            {% if t.name == 'pipeline:' ~ r.code %}
+              <a class="btn outline sm" href="{{ url_for('masters.workflow_edit', template_id=t.id) }}">Configure</a>
+            {% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

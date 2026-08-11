@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}{{ cycle.cycle_name }} · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('invoices.list_cycles') }}">Invoice cycles</a> / {{ cycle.cycle_name[:36] }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ cycle.cycle_name }}</h1>
+    <div class="sub">
+      <a href="{{ url_for('masters.project_detail', project_id=cycle.project_id) }}">{{ cycle.project.name }}</a>
+      · <a href="#">{{ cycle.project.client.name }}</a>
+      · Job <code>{{ cycle.project.job_code or '—' }}</code>
+      · Month <b>{{ cycle.invoice_month }}</b>
+      · Method <span class="pill teal">{{ cycle.project.submission_method.name }}</span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <span class="pill {{ CYCLE_CSS(cycle.status_code) }}" style="font-size:13px; padding:5px 14px;">{{ CYCLE_STATUS(cycle.status_code) }}</span>
+    {% if current_user.role in ('Admin', 'Manager') %}
+    <form method="post" action="{{ url_for('invoices.cycle_delete', cycle_id=cycle.id) }}"
+          onsubmit="return confirm('Delete this invoice cycle and all its documents?')">
+      <button class="btn red sm" type="submit">Delete</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="bottleneck {{ 'red' if cycle.status_code == 'OVERDUE' else ('green' if cycle.status_code in ('READY_FOR_SUBMISSION','APPROVED','PAID') else '') }}">
+  <h4>📌 Current bottleneck</h4>
+  <p>{{ cycle.bottleneck_text or 'No documents outstanding — the invoice is ready.' }}</p>
+  <div class="small muted">Next action: {{ cycle.next_action_text }}</div>
+</div>
+
+{# ------------------------------------------------ timeline ----------------- #}
+<div class="card">
+  <div class="card-head">
+    <h3>🚚 Delivery-style progress</h3>
+    <div class="muted small">{{ counts.completed }}/{{ counts.total }} documents completed</div>
+  </div>
+  <div class="card-body">
+    <div class="timeline">
+      <div class="tl-line"><div class="fill" style="width: {{ (counts.completed * 100 / counts.total)|round|int if counts.total else 0 }}%"></div></div>
+      <div class="tl-track">
+        {% for s in stages %}
+        <div class="tl-stage {{ s.status }}">
+          <div class="tl-dot">{{ {'done':'✓','active':'●','pending':''}.get(s.status, '') }}</div>
+          <div class="tl-name">{{ s.name }}</div>
+          <div class="tl-detail">{{ s.detail }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="kpi-strip mt">
+      <span class="pill blue">{{ counts.total }} required</span>
+      <span class="pill green">{{ counts.completed }} completed</span>
+      <span class="pill blue">{{ counts.in_preparation }} in preparation</span>
+      <span class="pill amber">{{ counts.waiting_client }} waiting on client</span>
+      {% if counts.not_started %}<span class="pill grey">{{ counts.not_started }} not started</span>{% endif %}
+      {% if counts.overdue %}<span class="pill red">{{ counts.overdue }} overdue</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+{# ------------------------------------------------ docs -------------------- #}
+<div class="card">
+  <div class="card-head">
+    <h3>📄 Document checklist ({{ cycle.documents|length }})</h3>
+  </div>
+  <div class="card-body">
+    {% for d in cycle.documents %}
+    <div class="doc-card">
+      <div class="dc-head">
+        <div class="ic">{{ d.doc_type.icon }}</div>
+        <div class="t">
+          <div class="n">{{ d.doc_type.name }}</div>
+          <div class="m">{{ d.cycle.cycle_name }}</div>
+        </div>
+        <span class="pill {{ DOC_CSS(d.status_code) }}">{{ DOC_STATUS(d.status_code) }}</span>
+        {% if d.is_completed() %}<span class="pill green">✓ Completed</span>{% endif %}
+        {% if d.due_date and d.due_date < today and not d.is_completed() %}<span class="pill red">Overdue</span>{% endif %}
+      </div>
+      <div class="dc-body">
+        <div class="kv"><div class="k">Responsible</div>
+          <div class="v">{{ d.employee.name if d.employee else '—' }}<br>
+            <span class="muted small">{{ d.department.code if d.department else '' }}</span></div></div>
+        <div class="kv"><div class="k">Due date</div><div class="v">{{ d.due_date.strftime('%d %b %Y') if d.due_date else '—' }}</div></div>
+        <div class="kv"><div class="k">Waiting for</div><div class="v">{{ d.waiting_for or '—' }}</div></div>
+        <div class="kv"><div class="k">Approval</div><div class="v">
+          {% if d.approval_status == 'APPROVED' %}<span class="pill green">Approved</span>
+          {% elif d.approval_status == 'REJECTED' %}<span class="pill red">Rejected</span>
+          {% elif d.approval_status == 'PENDING' %}<span class="pill amber">Pending</span>
+          {% else %}<span class="pill grey">—</span>{% endif %}</div></div>
+        <div class="kv"><div class="k">Submission</div><div class="v">{{ d.submission_status or '—' }}</div></div>
+        <div class="kv"><div class="k">Attachment</div><div class="v">
+          {% if d.attachment_path %}
+            <a href="{{ url_for('invoices.document_attachment', doc_id=d.id) }}">📎 Download</a>
+          {% else %}—{% endif %}</div></div>
+      </div>
+      {% if d.remarks %}<div class="dc-foot"><span class="small"><b>Remarks:</b> {{ d.remarks[:160] }}</span></div>{% endif %}
+      <div class="dc-foot">
+        <a class="btn outline sm" href="{{ url_for('invoices.document_detail', doc_id=d.id) }}">Open & manage</a>
+        {% set nxt = d.current_step %}
+        {% if not d.is_completed() %}
+        <form method="post" action="{{ url_for('invoices.document_advance', doc_id=d.id) }}" style="margin:0;">
+          <button class="btn sm" type="submit">Advance to next step</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}<div class="empty">No required documents for this cycle.</div>{% endfor %}
+  </div>
+</div>
+
+{# ------------------------------------------------ submission -------------- #}
+<div class="card">
+  <div class="card-head">
+    <h3>📤 Submission</h3>
+    <a class="btn sm" href="{{ url_for('submissions.new', cycle_id=cycle.id) }}">+ Register submission</a>
+  </div>
+  <div class="card-body">
+    {% if submission %}
+    <table class="tbl">
+      <tr><th>Date</th><th>Method</th><th>Submitted by</th><th>Reference no.</th><th>Confirmation no.</th><th>Status</th></tr>
+      <tr>
+        <td>{{ submission.submission_date.strftime('%d %b %Y') }}</td>
+        <td>{{ submission.submission_method.name }}</td>
+        <td>{{ submission.submitted_by.username if submission.submitted_by else '—' }}</td>
+        <td class="mono">{{ submission.reference_no or '—' }}</td>
+        <td class="mono">{{ submission.confirmation_no or '—' }}</td>
+        <td><span class="pill {{ {'SUBMITTED':'blue','PENDING_APPROVAL':'amber','APPROVED':'green','REJECTED':'red','RESUBMITTED':'blue'}.get(submission.status,'grey') }}">{{ submission.status|replace('_',' ')|title }}</span></td>
+      </tr>
+    </table>
+    {% else %}<div class="empty">No submission recorded yet.</div>{% endif %}
+  </div>
+</div>
+
+{# ------------------------------------------------ payment ----------------- #}
+<div class="card">
+  <div class="card-head">
+    <h3>💳 Payment</h3>
+    <a class="btn sm" href="{{ url_for('payments.new', cycle_id=cycle.id) }}">+ Add payment</a>
+  </div>
+  <div class="card-body">
+    {% if payment %}
+    <div class="grid3">
+      <div><div class="muted small">Invoice amount</div><div class="strong">{{ CURRENCY }} {{ "{:,.0f}".format(payment.invoice_amount or 0) }}</div></div>
+      <div><div class="muted small">Payment due</div><div class="strong">{{ payment.payment_due_date.strftime('%d %b %Y') if payment.payment_due_date else '—' }}</div></div>
+      <div><div class="muted small">Expected</div><div class="strong">{{ payment.expected_payment_date.strftime('%d %b %Y') if payment.expected_payment_date else '—' }}</div></div>
+      <div><div class="muted small">Actual</div><div class="strong">{{ payment.actual_payment_date.strftime('%d %b %Y') if payment.actual_payment_date else '—' }}</div></div>
+      <div><div class="muted small">Outstanding</div><div class="strong">{{ CURRENCY }} {{ "{:,.0f}".format(payment.outstanding_amount or 0) }}</div></div>
+      <div><div class="muted small">Status</div>
+        <span class="pill {{ {'PENDING':'amber','PARTIAL':'blue','PAID':'green','OVERDUE':'red'}.get(payment.payment_status,'grey') }}">{{ payment.payment_status }}</span></div>
+    </div>
+    {% else %}<div class="empty">No payment recorded yet.</div>{% endif %}
+  </div>
+</div>
+
+{% endblock %}

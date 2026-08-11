@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Payments · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Payments{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Payments</h1><div class="sub">Total outstanding: <b>{{ CURRENCY }} {{ "{:,.0f}".format(total) }}</b></div></div>
+  <a class="btn" href="{{ url_for('payments.new') }}">+ Add payment record</a>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('payments.list_payments') }}">
+  <div class="f"><label>Status</label>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for s in ['PENDING','PARTIAL','PAID','OVERDUE'] %}
+      <option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s }}</option>
+      {% endfor %}
+    </select></div>
+  <label class="checkline"><input type="checkbox" name="overdue" value="1" {{ 'checked' if filters.overdue_only }} onchange="this.form.submit()"> Overdue only</label>
+  {% if filters.status or filters.overdue_only %}<a class="btn ghost" href="{{ url_for('payments.list_payments') }}">Clear</a>{% endif %}
+</form>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Cycle</th><th>Invoice amount</th><th>Payment due</th><th>Expected</th><th>Actual</th><th>Outstanding</th><th>Status</th><th></th></tr>
+      {% for p in rows %}
+      <tr>
+        <td class="strong"><a href="{{ url_for('invoices.cycle_detail', cycle_id=p.invoice_cycle_id) }}">{{ p.cycle.cycle_name[:40] }}</a></td>
+        <td>{{ CURRENCY }} {{ "{:,.0f}".format(p.invoice_amount or 0) }}</td>
+        <td>{{ p.payment_due_date.strftime('%d %b %Y') if p.payment_due_date else '—' }}</td>
+        <td>{{ p.expected_payment_date.strftime('%d %b %Y') if p.expected_payment_date else '—' }}</td>
+        <td>{{ p.actual_payment_date.strftime('%d %b %Y') if p.actual_payment_date else '—' }}</td>
+        <td>{{ CURRENCY }} {{ "{:,.0f}".format(p.outstanding_amount or 0) }}</td>
+        <td><span class="pill {{ {'PENDING':'amber','PARTIAL':'blue','PAID':'green','OVERDUE':'red'}.get(p.payment_status,'grey') }}">{{ p.payment_status }}</span></td>
+        <td class="table-actions">
+          {% if p.payment_status != 'PAID' %}
+          <form method="post" action="{{ url_for('payments.mark_paid', payment_id=p.id) }}">
+            <button class="btn green sm" type="submit">Mark paid</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="8"><div class="empty">No payment records.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

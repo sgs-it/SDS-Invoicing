@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Clients · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Clients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Clients</h1>
+    <div class="sub">{{ clients|length }} clients. Each client may have multiple projects/sites.</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>+ Add client</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('masters.client_new') }}" class="form-row">
+      <div style="flex:2; min-width:200px;"><input name="name" placeholder="Client name" required></div>
+      <div style="flex:1;"><input name="email" placeholder="Email"></div>
+      <div style="flex:1;"><input name="phone" placeholder="Phone"></div>
+      <div style="flex:1;"><input name="address" placeholder="Address"></div>
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Client</th><th>Email</th><th>Phone</th><th>Projects</th><th>Status</th><th></th></tr>
+      {% for c in clients %}
+      <tr>
+        <td class="strong">{{ c.name }}</td>
+        <td>{{ c.email or '—' }}</td>
+        <td>{{ c.phone or '—' }}</td>
+        <td>{{ c.projects.count() }}</td>
+        <td>{% if c.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}</td>
+        <td class="table-actions">
+          <button class="btn outline sm js-toggle" data-target="edit-client-{{ c.id }}">Edit</button>
+          <a class="btn ghost sm" href="{{ url_for('masters.client_toggle', client_id=c.id) }}">{{ 'Deactivate' if c.active else 'Activate' }}</a>
+        </td>
+      </tr>
+      <tr id="edit-client-{{ c.id }}" class="js-row" hidden>
+        <td colspan="6">
+          <form method="post" action="{{ url_for('masters.client_edit', client_id=c.id) }}" class="form-row">
+            <div style="flex:2;"><input name="name" value="{{ c.name }}" required></div>
+            <div style="flex:1;"><input name="email" value="{{ c.email or '' }}"></div>
+            <div style="flex:1;"><input name="phone" value="{{ c.phone or '' }}"></div>
+            <div style="flex:1;"><input name="address" value="{{ c.address or '' }}"></div>
+            <button class="btn" type="submit">Save</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">No clients.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

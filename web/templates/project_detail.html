@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('masters.projects') }}">Projects</a> / {{ project.name[:40] }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ project.name }}</h1>
+    <div class="sub">
+      Client: <a href="#">{{ project.client.name }}</a> ·
+      Job code: <code>{{ project.job_code or '—' }}</code> ·
+      Method: <span class="pill teal">{{ project.submission_method.name }}</span>
+      {% if project.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}
+      <br>Contract:
+      <b>{{ project.contract_start.strftime('%d %b %Y') if project.contract_start else 'Ongoing' }}</b>
+      → <b>{{ project.contract_end.strftime('%d %b %Y') if project.contract_end else 'No end date (ongoing)' }}</b>
+    </div>
+  </div>
+  <div class="toolbar">
+    <a class="btn outline" href="{{ url_for('masters.project_edit', project_id=project.id) }}">Edit project</a>
+    <form method="post" action="{{ url_for('masters.project_delete', project_id=project.id) }}"
+          onsubmit="return confirm('Delete this project and ALL its invoice cycles, documents, submissions and payments? This cannot be undone.')">
+      <button class="btn red sm" type="submit">Delete project</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-head"><h3>📄 Required documents</h3></div>
+    <div class="card-body">
+      <table class="tbl">
+        <tr><th>#</th><th>Document</th><th>Client sign</th><th>GRN</th></tr>
+        {% for r in project.requirements %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="strong">{{ r.doc_type.icon }} {{ r.doc_type.name }}</td>
+          <td>{{ 'Yes' if r.doc_type.requires_client_sign else 'No' }}</td>
+          <td>{{ 'Yes' if r.doc_type.requires_grn else 'No' }}</td>
+        </tr>
+        {% else %}<tr><td colspan="4"><div class="empty">No required documents configured.</div></td></tr>{% endfor %}
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>📌 Criteria</h3></div>
+      <div class="card-body">
+        {% if project.common_criteria %}<p><b>Common criteria:</b> {{ project.common_criteria }}</p>{% endif %}
+        {% if project.sds_criteria %}<p><b>SDS criteria:</b> {{ project.sds_criteria }}</p>{% endif %}
+        {% if project.target_date_rule %}<p><b>Target date:</b> {{ project.target_date_rule }}</p>{% endif %}
+        {% if project.default_team_code %}<p><b>Default team:</b> <span class="pill blue">{{ project.default_team_code }}</span></p>{% endif %}
+        {% if not project.common_criteria and not project.sds_criteria and not project.target_date_rule %}<div class="empty">No criteria recorded.</div>{% endif %}
+      </div>
+    </div>
+
+    {% if project.step_narrative %}
+    <div class="card">
+      <div class="card-head"><h3>🪜 Procedure (from workbook)</h3></div>
+      <div class="card-body">
+        {% for line in project.step_narrative.split('\n') %}
+        <div class="small" style="padding:3px 0;">{{ line }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h3>🧾 Invoice cycles for this project</h3>
+    <a class="btn sm" href="{{ url_for('invoices.cycle_new', project_id=project.id) }}">+ New invoice cycle</a>
+  </div>
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Cycle</th><th>Month</th><th>Invoice no.</th><th>Amount</th><th>Status</th></tr>
+      {% for c in project.cycles %}
+      <tr>
+        <td class="strong"><a href="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}">{{ c.cycle_name[:44] }}</a></td>
+        <td>{{ c.invoice_month }}</td>
+        <td class="mono">{{ c.invoice_number or '—' }}</td>
+        <td>{% if c.invoice_amount %}{{ CURRENCY }} {{ "{:,.0f}".format(c.invoice_amount) }}{% else %}—{% endif %}</td>
+        <td><span class="pill {{ CYCLE_CSS(c.status_code) }}">{{ CYCLE_STATUS(c.status_code) }}</span></td>
+      </tr>
+      {% else %}<tr><td colspan="5"><div class="empty">No invoice cycles yet.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

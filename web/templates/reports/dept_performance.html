@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Department / Employee Performance · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Performance{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Department / Employee performance</h1><div class="sub">Workload, completion and overdue rates.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.dept_performance_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="card">
+  <div class="card-head"><h3>By department</h3></div>
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Department</th><th>Assigned</th><th>Completed</th><th>Pending</th><th>Overdue</th><th>Completion</th></tr>
+      {% for r in dept_rows %}
+      <tr>
+        <td class="strong">{{ r.dept.code }} — {{ r.dept.name }}</td>
+        <td>{{ r.total }}</td>
+        <td class="green-text">{{ r.completed }}</td>
+        <td>{{ r.pending }}</td>
+        <td>{% if r.overdue %}<span class="pill red">{{ r.overdue }}</span>{% else %}0{% endif %}</td>
+        <td>
+          <div class="progress"><div class="bar {{ 'green' if r.pct >= 80 else 'amber' if r.pct >= 50 else 'red' }}" style="width:{{ r.pct }}%"></div></div>
+          <span class="muted small">{{ r.pct|round }}%</span>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">No departments.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>By employee</h3></div>
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Employee</th><th>Department</th><th>Assigned</th><th>Completed</th><th>Pending</th><th>Overdue</th></tr>
+      {% for r in emp_rows %}
+      <tr>
+        <td class="strong">{{ r.emp.name }}</td>
+        <td>{{ r.emp.department.code if r.emp.department else '—' }}</td>
+        <td>{{ r.total }}</td>
+        <td class="green-text">{{ r.completed }}</td>
+        <td>{{ r.pending }}</td>
+        <td>{% if r.overdue %}<span class="pill red">{{ r.overdue }}</span>{% else %}0{% endif %}</td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">No employees.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Reports · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Reports{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Management reports</h1>
+<div class="sub">Every report supports filtering, a printable view and CSV export.</div></div></div>
+
+<div class="grid2">
+  {% for slug, title, desc in reports %}
+  <div class="card">
+    <div class="card-body">
+      <div class="stat-line"><span class="strong">{{ title }}</span></div>
+      <div class="muted" style="min-height:38px;">{{ desc }}</div>
+      <a class="btn outline sm" href="{{ url_for('reports.' + slug.replace('-', '_')) }}">Open report →</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Projects · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Projects{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Projects</h1>
+    <div class="sub">{{ projects|length }} projects configured from the invoicing workbook.</div>
+  </div>
+  <a class="btn" href="{{ url_for('masters.project_new') }}">+ New project</a>
+</div>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr>
+        <th>Project</th><th>Client</th><th>Job code</th><th>Submission method</th>
+        <th>Required documents</th><th>Default team</th><th>Contract end</th><th>Active</th><th></th>
+      </tr>
+      {% for p in projects %}
+      <tr>
+        <td class="strong"><a href="{{ url_for('masters.project_detail', project_id=p.id) }}">{{ p.name }}</a></td>
+        <td><a href="#">{{ p.client.name }}</a></td>
+        <td class="mono">{{ p.job_code or '—' }}</td>
+        <td><span class="pill teal">{{ p.submission_method.name }}</span></td>
+        <td>
+          {% for r in p.requirements %}<span class="pill blue">{{ r.doc_type.code }}</span> {% endfor %}
+        </td>
+        <td>{{ p.default_team_code or '—' }}</td>
+        <td class="small">
+          {% if p.contract_end %}
+            {{ p.contract_end.strftime('%d %b %Y') }}
+            {% if p.contract_end < today %}<span class="pill red">expired</span>{% endif %}
+          {% else %}<span class="muted">ongoing</span>{% endif %}
+        </td>
+        <td>{% if p.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}</td>
+        <td class="table-actions">
+          <a class="btn outline sm" href="{{ url_for('masters.project_edit', project_id=p.id) }}">Edit</a>
+          <a class="btn ghost sm" href="{{ url_for('masters.project_toggle', project_id=p.id) }}">{{ 'Deactivate' if p.active else 'Activate' }}</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9"><div class="empty">No projects yet. Run the Excel migration or add one.</div></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

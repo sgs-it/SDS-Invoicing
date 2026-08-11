@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Register submission · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('submissions.list_submissions') }}">Submissions</a> / New{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Register submission</h1><div class="sub">Record how and when the invoice was submitted to the client.</div></div></div>
+
+<form method="post" action="{{ url_for('submissions.new') }}">
+  <div class="card" style="max-width: 820px;">
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Invoice cycle</label>
+          <select name="cycle_id" required>
+            <option value="">— Choose a cycle —</option>
+            {% for c in cycles %}
+            <option value="{{ c.id }}" {{ 'selected' if selected and selected.id == c.id }}>
+              {{ c.cycle_name[:60] }} ({{ c.project.client.name }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Submission method</label>
+          <select name="submission_method_id" required>
+            {% for m in methods %}<option value="{{ m.id }}">{{ m.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Submission date</label>
+          <input type="date" name="submission_date">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            {% for s in ['SUBMITTED','PENDING_APPROVAL','APPROVED','REJECTED','RESUBMITTED'] %}
+            <option value="{{ s }}">{{ s|replace('_',' ')|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reference number</label>
+          <input name="reference_no" placeholder="e.g. Portal ref / email subject">
+        </div>
+        <div class="form-group">
+          <label>Confirmation number</label>
+          <input name="confirmation_no" placeholder="e.g. ticket / confirmation no.">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Remarks</label>
+          <textarea name="remarks"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="card-foot form-actions">
+      <button class="btn" type="submit">Register submission</button>
+      <a class="btn ghost" href="{{ url_for('submissions.list_submissions') }}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

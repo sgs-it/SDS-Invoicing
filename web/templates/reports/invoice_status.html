@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Invoice Status · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Invoice Status{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Invoice Status</h1><div class="sub">{{ rows|length }} cycles · live status, document counts and bottleneck.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.invoice_status_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Cycle</th><th>Client / Project</th><th>Month</th><th>Amount</th><th>Docs</th><th>Status</th><th>Bottleneck</th></tr>
+      {% for r in rows %}
+      {% set c = r.cycle %}
+      <tr>
+        <td class="strong"><a href="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}">{{ c.cycle_name[:38] }}</a></td>
+        <td>{{ c.project.client.name }} · {{ c.project.name[:24] }}</td>
+        <td class="mono">{{ c.invoice_month or '—' }}</td>
+        <td>{{ CURRENCY }} {{ "{:,.0f}".format(c.invoice_amount or 0) }}</td>
+        <td class="small">
+          {{ r.counts.completed }}/{{ r.counts.total }} done
+          {% if r.counts.in_preparation %} · {{ r.counts.in_preparation }} prep{% endif %}
+          {% if r.counts.waiting_client %} · {{ r.counts.waiting_client }} client{% endif %}
+          {% if r.counts.overdue %}<span class="pill red">{{ r.counts.overdue }} overdue</span>{% endif %}
+        </td>
+        <td><span class="pill {{ r.status_css }}">{{ r.status_label }}</span></td>
+        <td class="muted small">{{ c.bottleneck_text or '—' }}</td>
+      </tr>
+      {% else %}<tr><td colspan="7"><div class="empty">No cycles match the filters.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

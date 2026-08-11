@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if project else 'New' }} project · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('masters.projects') }}">Projects</a> / {{ 'Edit' if project else 'New' }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ 'Edit project' if project else 'New project' }}</h1>
+    <div class="sub">Configure the project and its required-document workflow.</div>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('masters.project_edit', project_id=project.id) if project else url_for('masters.project_new') }}">
+  <div class="card">
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Client</label>
+          <select name="client_id" required>
+            {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if project and project.client_id == c.id }}>{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Project name / site</label>
+          <input name="name" value="{{ project.name if project else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label>Job code</label>
+          <input name="job_code" value="{{ project.job_code or '' if project else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Submission method</label>
+          <select name="submission_method_id" required>
+            {% for m in methods %}<option value="{{ m.id }}" {{ 'selected' if project and project.submission_method_id == m.id }}>{{ m.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Default team (dept code)</label>
+          <input name="default_team_code" placeholder="e.g. CSD, SGS, OPS, FIN, BPO" value="{{ project.default_team_code or '' if project else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Target date rule</label>
+          <input name="target_date_rule" placeholder="e.g. Before 10th of every month" value="{{ project.target_date_rule or '' if project else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Common criteria</label>
+          <input name="common_criteria" placeholder="e.g. GRN Required" value="{{ project.common_criteria or '' if project else '' }}">
+        </div>
+        <div class="form-group">
+          <label>SDS criteria</label>
+          <input name="sds_criteria" placeholder="e.g. Must be signed by the client" value="{{ project.sds_criteria or '' if project else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Contract start</label>
+          <input type="date" name="contract_start" value="{{ project.contract_start.isoformat() if project and project.contract_start else '' }}">
+          <div class="hint">Monthly invoicing begins this month.</div>
+        </div>
+        <div class="form-group">
+          <label>Contract end (leave blank = ongoing)</label>
+          <input type="date" name="contract_end" value="{{ project.contract_end.isoformat() if project and project.contract_end else '' }}">
+          <div class="hint">The monthly procedure runs until this month, then stops.</div>
+        </div>
+      </div>
+
+      <div class="form-group mt">
+        <label>Required documents (check all that apply)</label>
+        <div class="grid3" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+          {% for dt in doc_types %}
+          <label class="checkline">
+            <input type="checkbox" name="required_docs" value="{{ dt.code }}"
+                   {{ 'checked' if dt.code in selected_docs else '' }}>
+            {{ dt.icon }} {{ dt.name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="card-foot form-actions">
+      <button class="btn" type="submit">Save project</button>
+      <a class="btn ghost" href="{{ url_for('masters.projects') }}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

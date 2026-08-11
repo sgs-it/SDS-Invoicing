@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.doc_type.name }} · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('invoices.cycle_detail', cycle_id=doc.invoice_cycle_id) }}">{{ doc.cycle.cycle_name[:30] }}</a> / {{ doc.doc_type.code }}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>{{ doc.doc_type.icon }} {{ doc.doc_type.name }}</h1>
+    <div class="sub">
+      <a href="{{ url_for('invoices.cycle_detail', cycle_id=doc.invoice_cycle_id) }}">{{ doc.cycle.cycle_name }}</a>
+      · {{ doc.cycle.project.client.name }}
+      {% if doc.due_date %} · Due <b>{{ doc.due_date.strftime('%d %b %Y') }}</b>{% endif %}
+    </div>
+  </div>
+  <span class="pill {{ DOC_CSS(doc.status_code) }}" style="font-size:13px; padding:5px 14px;">{{ DOC_STATUS(doc.status_code) }}</span>
+</div>
+
+{# ------------------------------------------------ workflow stepper -------- #}
+<div class="card">
+  <div class="card-head"><h3>Workflow</h3></div>
+  <div class="card-body">
+    <div class="timeline">
+      <div class="tl-track">
+        {% for s in steps %}
+          {% if doc.current_step_id == s.id %}{% set state = 'active' %}
+          {% elif doc.current_step_id and s.sequence < doc.current_step.sequence %}{% set state = 'done' %}
+          {% else %}{% set state = 'pending' %}{% endif %}
+          <div class="tl-stage {{ state }}">
+            <div class="tl-dot">{{ '✓' if state == 'done' else ('●' if state == 'active' else '') }}</div>
+            <div class="tl-name">{{ s.name }}</div>
+            <div class="tl-detail">{{ s.waiting_on or '' }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% if doc.waiting_for %}<div class="hint mt"><b>Currently:</b> {{ doc.waiting_for }}</div>{% endif %}
+  </div>
+</div>
+
+{# ------------------------------------------------ advance ----------------- #}
+{% if not doc.is_completed() %}
+<div class="card">
+  <div class="card-head"><h3>⏭️ Advance workflow</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('invoices.document_advance', doc_id=doc.id) }}" class="form-row">
+      <div style="min-width:200px;">
+        <label>Jump to step</label>
+        <select name="to_step_id">
+          {% for s in steps %}
+            {% if (doc.current_step_id and s.sequence > doc.current_step.sequence) or (not doc.current_step_id and s.sequence > 0) %}
+              <option value="{{ s.id }}">{{ s.name }}{{ ' (complete)' if s.is_terminal else '' }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div style="flex:1; min-width:220px;">
+        <label>Note (optional)</label>
+        <input name="note" placeholder="e.g. Sent to client, awaiting signature">
+      </div>
+      <button class="btn" type="submit">Apply step</button>
+    </form>
+    <div class="hint mt">Only steps after the current one are shown. Approving/completing requires approval rights on this document type.</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid2">
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>✏️ Ownership & dates</h3></div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('invoices.document_edit', doc_id=doc.id) }}">
+          <div class="form-grid">
+            <div class="form-group"><label>Department</label>
+              <select name="department_id"><option value="">— None —</option>
+                {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if doc.department_id == d.id }}>{{ d.code }} — {{ d.name }}</option>{% endfor %}
+              </select></div>
+            <div class="form-group"><label>Responsible employee</label>
+              <select name="employee_id"><option value="">— None —</option>
+                {% for e in employees %}<option value="{{ e.id }}" {{ 'selected' if doc.employee_id == e.id }}>{{ e.name }}{% if e.department %} ({{ e.department.code }}){% endif %}</option>{% endfor %}
+              </select></div>
+            <div class="form-group"><label>Preparation date</label>
+              <input type="date" name="preparation_date" value="{{ doc.preparation_date.isoformat() if doc.preparation_date }}"></div>
+            <div class="form-group"><label>Due date</label>
+              <input type="date" name="due_date" value="{{ doc.due_date.isoformat() if doc.due_date }}"></div>
+            <div class="form-group" style="grid-column: 1 / -1;"><label>Remarks</label>
+              <textarea name="remarks">{{ doc.remarks or '' }}</textarea></div>
+          </div>
+          <button class="btn" type="submit">Save details</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>📎 Attachment</h3></div>
+      <div class="card-body">
+        {% if doc.attachment_path %}
+          <div class="flex mb">
+            <span>📎 File on record</span>
+            <a class="btn outline sm" href="{{ url_for('invoices.document_attachment', doc_id=doc.id) }}">Download</a>
+            <form method="post" action="{{ url_for('invoices.document_remove_attachment', doc_id=doc.id) }}" style="margin:0;">
+              <button class="btn red sm" type="submit">Remove</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="empty">No attachment uploaded.</div>
+        {% endif %}
+        <form method="post" action="{{ url_for('invoices.document_upload', doc_id=doc.id) }}"
+              enctype="multipart/form-data" class="form-row">
+          <input type="file" name="attachment" required>
+          <button class="btn" type="submit">Upload</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>🕒 Complete history</h3></div>
+    <div class="card-body">
+      <div class="timeline-mini">
+        {% for h in doc.history|reverse %}
+        <div class="tl-item {{ 'done' if h.to_status == 'COMPLETED' else '' }}">
+          <div class="tl-when">{{ h.created_at.strftime('%d %b %Y %H:%M') }}</div>
+          <div class="tl-who">{{ h.user.username if h.user else 'System' }}</div>
+          <div class="small">
+            {{ h.action }}
+            {% if h.from_status and h.to_status and h.from_status != h.to_status %}
+              <span class="muted">({{ h.from_status }} → {{ h.to_status }})</span>
+            {% endif %}
+            {% if h.note %} — {{ h.note }}{% endif %}
+          </div>
+        </div>
+        {% else %}<div class="empty">No activity on this document yet.</div>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

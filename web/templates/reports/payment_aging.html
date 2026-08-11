@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Payment Aging · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Payment Aging{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Payment aging</h1><div class="sub">Unpaid invoices bucketed by days past due.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.payment_aging_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="grid3" style="margin-bottom:16px;">
+  {% for key in order %}
+  <div class="card">
+    <div class="card-body center">
+      <div class="huge">{{ CURRENCY }} {{ "{:,.0f}".format(totals[key]) }}</div>
+      <div class="muted small">{{ 'Current' if key == 'CURRENT' else 'No due date' if key == 'NO_DUE_DATE' else 'Paid' if key == 'PAID' else key + ' days overdue' }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% for key in order %}
+<div class="card">
+  <div class="card-head"><h3>{{ 'Current' if key == 'CURRENT' else 'No due date' if key == 'NO_DUE_DATE' else 'Paid' if key == 'PAID' else key + ' days overdue' }} <span class="pill {{ 'green' if key == 'PAID' else 'red' if key == '90+' else 'amber' }}">{{ buckets[key]|length }}</span></h3></div>
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Client</th><th>Cycle</th><th>Amount</th><th>Due date</th><th>Outstanding</th><th>Days past due</th></tr>
+      {% for p in buckets[key] %}
+      <tr>
+        <td class="strong">{{ p.cycle.project.client.name }}</td>
+        <td class="small"><a href="{{ url_for('invoices.cycle_detail', cycle_id=p.cycle.id) }}">{{ p.cycle.cycle_name[:34] }}</a></td>
+        <td>{{ CURRENCY }} {{ "{:,.0f}".format(p.invoice_amount or 0) }}</td>
+        <td class="small">{{ p.payment_due_date.strftime('%d %b %Y') if p.payment_due_date else '—' }}</td>
+        <td class="strong">{{ CURRENCY }} {{ "{:,.0f}".format(p.outstanding_amount or 0) }}</td>
+        <td>{% if key not in ('PAID', 'NO_DUE_DATE') %}<span class="pill red">{{ (today - p.payment_due_date).days }} days</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">Nothing in this bucket.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

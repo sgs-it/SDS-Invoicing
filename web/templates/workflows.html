@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Workflow templates · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Workflow templates{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Workflow templates</h1><div class="sub">Configurable step pipelines for each document type and submission method.</div></div>
+</div>
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Template</th><th>Type</th><th>Steps</th><th></th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="strong">{{ r.name }}</td>
+        <td>
+          {% if r.doc_type_id %}
+            <span class="pill blue">{{ r.doc_type.code if r.doc_type else 'Document type' }}</span>
+          {% else %}
+            <span class="pill violet">Invoice pipeline</span>
+          {% endif %}
+        </td>
+        <td>{{ r.steps|length }}</td>
+        <td><a class="btn outline sm" href="{{ url_for('masters.workflow_edit', template_id=r.id) }}">Configure</a></td>
+      </tr>
+      {% else %}<tr><td colspan="4"><div class="empty">No workflow templates.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

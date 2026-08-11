@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Outstanding Payment · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Outstanding{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Outstanding payments</h1><div class="sub">Total outstanding: <b>{{ CURRENCY }} {{ "{:,.0f}".format(total) }}</b> across {{ rows|length }} payments.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.outstanding_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Client</th><th>Cycle</th><th>Amount</th><th>Due date</th><th>Outstanding</th><th>Days overdue</th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="strong">{{ r.p.cycle.project.client.name }}</td>
+        <td class="small"><a href="{{ url_for('invoices.cycle_detail', cycle_id=r.p.cycle.id) }}">{{ r.p.cycle.cycle_name[:34] }}</a></td>
+        <td>{{ CURRENCY }} {{ "{:,.0f}".format(r.p.invoice_amount or 0) }}</td>
+        <td class="small">{{ r.p.payment_due_date.strftime('%d %b %Y') if r.p.payment_due_date else '—' }}</td>
+        <td class="strong red-text">{{ CURRENCY }} {{ "{:,.0f}".format(r.outstanding) }}</td>
+        <td>{% if r.days_overdue %}<span class="pill red">{{ r.days_overdue }} days</span>{% else %}<span class="pill amber">not due</span>{% endif %}</td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">No outstanding payments. 🎉</div></td></tr>{% endfor %}
+    </table>
+  </div>
+  {% if rows %}
+  <div class="card-foot"><b>Total outstanding: {{ CURRENCY }} {{ "{:,.0f}".format(total) }}</b></div>
+  {% endif %}
+</div>
+{% endblock %}

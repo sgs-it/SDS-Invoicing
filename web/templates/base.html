@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">🧾</span>
+      <span>SDS Invoicing</span>
+    </div>
+    <nav>
+      <a class="{{ 'active' if request.endpoint == 'dashboard.home' else '' }}" href="{{ url_for('dashboard.home') }}"><span class="ico">📊</span> Dashboard</a>
+      <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('masters.projects') else '' }}" href="{{ url_for('masters.projects') }}"><span class="ico">🗂️</span> Projects</a>
+      <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('notifications.') else '' }}" href="{{ url_for('notifications.index') }}"><span class="ico">🔔</span> Notifications</a>
+
+      {% if current_user.role == 'Admin' %}
+      <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('admin.users') else '' }}" href="{{ url_for('admin.users') }}"><span class="ico">👥</span> Users</a>
+      <a class="{{ 'active' if request.endpoint and request.endpoint.startswith('admin.settings') else '' }}" href="{{ url_for('admin.settings') }}"><span class="ico">⚙️</span> Settings</a>
+      {% endif %}
+    </nav>
+    <div class="side-foot">{{ APP_NAME }} · {{ CURRENCY }}</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="crumb">{% block crumb %}SDS Invoicing Tracker{% endblock %}</div>
+      <div class="right">
+        <a class="bell" href="{{ url_for('notifications.index') }}" title="Notifications">🔔
+          {% if unread_count %}<span class="dot">{{ unread_count if unread_count < 100 else '99+' }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('auth.change_password') }}" class="user-chip" title="Change password">
+          <span class="avatar">{{ current_user.username[:1]|upper }}</span>
+          <span class="meta">
+            <span class="name">{{ current_user.username }}</span>
+            <span class="role">{{ current_user.role }}</span>
+          </span>
+        </a>
+        <a class="btn ghost sm" href="{{ url_for('auth.logout') }}">Sign out</a>
+      </div>
+    </div>
+
+    <div class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flashes">
+          {% for category, message in messages %}
+          <div class="flash {{ category }}"><span>{{ message }}</span></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

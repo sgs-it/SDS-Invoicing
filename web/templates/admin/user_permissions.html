@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Permissions · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('admin.users') }}">Users</a> / {{ user.username }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Document permissions — {{ user.username }}</h1>
+  <div class="sub">Assign which documents <b>{{ user.username }}</b> can prepare and approve. Blank = no access.</div></div>
+</div>
+
+<form method="post" action="{{ url_for('admin.user_permissions', user_id=user.id) }}">
+  <div class="card">
+    <div class="card-body table-wrap">
+      <table class="tbl">
+        <tr><th>Document</th><th>Can prepare</th><th>Can approve</th></tr>
+        {% for dt in doc_types %}
+        <tr>
+          <td class="strong">{{ dt.icon }} {{ dt.name }} <span class="muted mono">{{ dt.code }}</span></td>
+          <td><label class="checkline"><input type="checkbox" name="prep_{{ dt.code }}" value="1"
+            {{ 'checked' if perms.get(dt.id) and perms[dt.id].can_prepare }}> Prepare</label></td>
+          <td><label class="checkline"><input type="checkbox" name="appr_{{ dt.code }}" value="1"
+            {{ 'checked' if perms.get(dt.id) and perms[dt.id].can_approve }}> Approve</label></td>
+        </tr>
+        {% else %}<tr><td colspan="3"><div class="empty">No document types defined.</div></td></tr>{% endfor %}
+      </table>
+    </div>
+    <div class="card-foot form-actions">
+      <button class="btn" type="submit">Save permissions</button>
+      <a class="btn ghost" href="{{ url_for('admin.users') }}">Cancel</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

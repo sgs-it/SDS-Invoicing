@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Dashboard{% endblock %}
+{% block content %}
+
+<div class="top-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p>Welcome back, {{ current_user.username }}</p>
+  </div>
+</div>
+
+<form class="controls-container" method="get" action="{{ url_for('dashboard.home') }}" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+  <div class="search-box" style="flex: 1; min-width: 250px;">
+    <select name="client_id" class="filter-select" onchange="this.form.submit()" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
+      <option value="">All clients</option>
+      {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if filters.client_id == c.id }}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="filter-group" style="display: flex; gap: 0.75rem;">
+    <select name="status" class="filter-select" onchange="this.form.submit()" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
+      <option value="">All statuses</option>
+      {% for code, label in CYCLE_STATUS.items() %}{% if label %}
+      <option value="{{ code }}" {{ 'selected' if filters.status == code }}>{{ label }}</option>
+      {% endif %}{% endfor %}
+    </select>
+    <select name="method_id" class="filter-select" onchange="this.form.submit()" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
+      <option value="">All methods</option>
+      {% for m in methods %}<option value="{{ m.id }}" {{ 'selected' if filters.method_id == m.id }}>{{ m.name }}</option>{% endfor %}
+    </select>
+    <select name="month" class="filter-select" onchange="this.form.submit()" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
+      <option value="">All months</option>
+      {% for m in months %}<option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if filters.client_id or filters.project_id or filters.month or filters.method_id or filters.status %}
+  <a class="btn ghost" href="{{ url_for('dashboard.home') }}">Clear</a>
+  {% endif %}
+</form>
+
+<div class="dashboard-grid">
+  <div class="stat-card">
+    <div class="stat-icon" style="background: #eff6ff; color: #3b82f6;">📄</div>
+    <div class="stat-content">
+      <p class="value">{{ projects|length }}</p>
+      <p class="label">Active Projects</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: #dcfce7; color: #22c55e;">🧾</div>
+    <div class="stat-content">
+      <p class="value">{{ active_cycles }}</p>
+      <p class="label">Invoice Cycles</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: #fef9c3; color: #eab308;">⏳</div>
+    <div class="stat-content">
+      <p class="value">{{ agg.waiting_client }}</p>
+      <p class="label">Documents Waiting</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: #f3e8ff; color: #a855f7;">📤</div>
+    <div class="stat-content">
+      <p class="value">{{ ready }}</p>
+      <p class="label">Ready for Submission</p>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 2.5rem; margin-bottom: 0.5rem; font-size: 1.15rem; color: var(--text);">Invoice Cycles Overview</h3>
+<div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem;">{{ cycles|length }} cycles shown</div>
+
+<div class="long-cards-container">
+  <div class="long-card-header">
+    <div>PROJECT</div>
+    <div>METHOD</div>
+    <div>JOB CODE</div>
+    <div>PROGRESS</div>
+    <div>STATUS</div>
+    <div>NEXT ACTION</div>
+  </div>
+
+  {% for c in cycles %}
+  {% set total_docs = c.documents|length %}
+  {% set comp_docs = c.documents|selectattr("completed_at")|list|length %}
+  {% set prog_pct = (comp_docs / total_docs * 100)|round|int if total_docs else 0 %}
+  {% set next_doc = c.documents|rejectattr("completed_at")|first %}
+  <a href="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}" class="long-card-3d tilt-card" style="text-decoration: none; color: inherit;">
+    <div class="card-top-accent"></div>
+    <div class="project-name-cell">
+      {{ c.project.client.name }} - {{ c.project.name[:35] }}{% if c.project.name|length > 35 %}...{% endif %}
+    </div>
+    <div>
+      {% if 'direct' in c.project.submission_method.name|lower %}
+        <span class="method-pill method-direct"><span class="method-dot"></span> {{ c.project.submission_method.name }}</span>
+      {% elif 'portal' in c.project.submission_method.name|lower or 'online' in c.project.submission_method.name|lower %}
+        <span class="method-pill method-online"><span class="method-dot"></span> {{ c.project.submission_method.name }}</span>
+      {% else %}
+        <span class="method-pill method-common"><span class="method-dot"></span> {{ c.project.submission_method.name }}</span>
+      {% endif %}
+    </div>
+    <div style="font-family: monospace; font-size: 0.85rem; color: var(--muted);">{{ c.project.job_code or 'N/A' }}</div>
+    <div class="list-progress-container">
+      <div class="list-progress-bg"><div class="list-progress-fill" style="width: {{ prog_pct }}%;"></div></div>
+      <div class="list-progress-text">{{ prog_pct }}%</div>
+    </div>
+    <div>
+      <span class="tag {{ 'tag-success' if c.status_code in ['APPROVED', 'PAID'] else 'tag-info' if c.status_code in ['IN_PREPARATION', 'SUBMITTED', 'READY_FOR_SUBMISSION'] else 'tag-warning' }}">
+        {{ CYCLE_STATUS(c.status_code) }}
+      </span>
+    </div>
+    <div style="color: var(--muted); font-size: 0.85rem;">
+      {{ next_doc.doc_type.name if next_doc else 'Done' }}
+    </div>
+  </a>
+  {% else %}
+  <div class="empty">No active invoice cycles match filters.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

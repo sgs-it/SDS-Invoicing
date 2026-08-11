@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Invoice cycles · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Invoice cycles{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Invoice cycles</h1>
+    <div class="sub">{{ cycles|length }} invoice cycles. Overall status is auto-computed from each document.</div>
+  </div>
+  <a class="btn" href="{{ url_for('invoices.cycle_new') }}">+ New invoice cycle</a>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('invoices.list_cycles') }}">
+  <div class="f">
+    <label>Project</label>
+    <select name="project_id" onchange="this.form.submit()">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if filters.project_id == p.id }}>{{ p.name[:48] }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="f">
+    <label>Month</label>
+    <select name="month" onchange="this.form.submit()">
+      <option value="">All months</option>
+      {% for m in months %}<option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="f">
+    <label>Status</label>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for code, label in CYCLE_STATUS.items() %}{% if label %}
+      <option value="{{ code }}" {{ 'selected' if filters.status == code }}>{{ label }}</option>
+      {% endif %}{% endfor %}
+    </select>
+  </div>
+  {% if filters.project_id or filters.month or filters.status %}
+  <a class="btn ghost" href="{{ url_for('invoices.list_cycles') }}">Clear</a>
+  {% endif %}
+</form>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr>
+        <th>Cycle</th><th>Client / Project</th><th>Month</th><th>Invoice no.</th>
+        <th>Amount</th><th>Docs</th><th>Status</th><th>Next action</th><th></th>
+      </tr>
+      {% for c in cycles %}
+      <tr>
+        <td class="strong"><a href="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}">{{ c.cycle_name[:42] }}</a></td>
+        <td>{{ c.project.client.name[:20] }}<br><span class="muted small">{{ c.project.name[:26] }}</span></td>
+        <td>{{ c.invoice_month }}</td>
+        <td class="mono">{{ c.invoice_number or '—' }}</td>
+        <td>{% if c.invoice_amount %}{{ CURRENCY }} {{ "{:,.0f}".format(c.invoice_amount) }}{% else %}—{% endif %}</td>
+        <td class="small">
+          {% set ns = namespace(done=0) %}
+          {% for d in c.documents %}{% if d.is_completed() %}{% set ns.done = ns.done + 1 %}{% endif %}{% endfor %}
+          {{ ns.done }}/{{ c.documents|length }}
+          <div class="progress mt0"><i style="width:{{ (ns.done * 100 / c.documents|length)|round|int if c.documents else 0 }}%"></i></div>
+        </td>
+        <td><span class="pill {{ CYCLE_CSS(c.status_code) }}">{{ CYCLE_STATUS(c.status_code) }}</span></td>
+        <td class="small">{{ (c.next_action_text or '—')[:46] }}</td>
+        <td class="table-actions">
+          <a class="btn outline sm" href="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}">Open</a>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="9"><div class="empty">No invoice cycles yet.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

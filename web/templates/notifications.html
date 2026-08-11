@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Notifications · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Notifications</h1><div class="sub">{{ unread }} unread · reminders, escalations and status updates.</div></div>
+  {% if unread %}<form method="post" action="{{ url_for('notifications.mark_all') }}"><button class="btn outline">Mark all read</button></form>{% endif %}
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('notifications.index') }}">
+  <div class="f"><label>Type</label>
+    <select name="type" onchange="this.form.submit()">
+      <option value="">All types</option>
+      {% for t in ['REMINDER','ESCALATION','STATUS','SYSTEM'] %}
+      <option value="{{ t }}" {{ 'selected' if ntype == t }}>{{ t }}</option>
+      {% endfor %}
+    </select></div>
+  {% if ntype %}<a class="btn ghost" href="{{ url_for('notifications.index') }}">Clear</a>{% endif %}
+</form>
+
+<div class="card">
+  <div class="card-body">
+    {% for n in rows %}
+    <div class="doc-card" style="{{ 'opacity:.65' if n.is_read }}">
+      <div class="dc-head">
+        <div class="ic">{{ {'REMINDER':'⏰','ESCALATION':'🚨','STATUS':'🔵','SYSTEM':'⚙️'}.get(n.ntype,'⚙️') }}</div>
+        <div class="t">
+          <div class="n">{{ n.title }} <span class="pill {{ {'REMINDER':'amber','ESCALATION':'red','STATUS':'blue','SYSTEM':'grey'}.get(n.ntype,'grey') }}">{{ n.ntype }}</span></div>
+          <div class="m">{{ n.message }}</div>
+        </div>
+        <div class="muted small">{{ n.created_at.strftime('%d %b %Y %H:%M') }}</div>
+        {% if not n.is_read %}
+        <form method="post" action="{{ url_for('notifications.mark_read', notification_id=n.id) }}" style="margin:0;">
+          <button class="btn outline sm" type="submit">Mark read</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}<div class="empty">No notifications.</div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

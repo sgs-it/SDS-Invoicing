@@ -1,0 +1,281 @@
+"""Invoice cycles and per-document tracking.
+
+Handles cycle creation (which auto-generates the required-document checklist),
+document advancement along its type's workflow, assignment, dates, remarks,
+attachments and the document history / detail view.
+"""
+import os
+import uuid
+from datetime import date, datetime
+
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
+from flask_login import current_user, login_required
+
+from web import db
+from web.models import (
+    CycleDocument,
+    Department,
+    DocumentHistory,
+    Employee,
+    InvoiceCycle,
+    Payment,
+    Project,
+    Submission,
+    WorkflowStep,
+)
+from web.workflow import (
+    CYCLE_STATUS_LABELS,
+    advance_document,
+    audit,
+    CallableDict,
+    compute_cycle_counts,
+    cycle_status_css,
+    delivery_stages,
+    doc_status_css,
+    doc_status_label,
+    doc_steps,
+    find_bottleneck,
+    next_action,
+    recompute_cycle,
+)
+
+bp = Blueprint("invoices", __name__)
+
+
+def _cycle_status_helpers():
+    return cycle_status_css, CallableDict(CYCLE_STATUS_LABELS)
+
+
+# --------------------------------------------------------------------------- #
+# Cycle list + create
+# --------------------------------------------------------------------------- #
+@bp.route("/invoices")
+@login_required
+def list_cycles():
+    f = {
+        "project_id": request.args.get("project_id", type=int),
+        "month": request.args.get("month", "") or "",
+        "status": request.args.get("status", "") or "",
+    }
+    q = InvoiceCycle.query.order_by(InvoiceCycle.created_at.desc())
+    if f["project_id"]:
+        q = q.filter(InvoiceCycle.project_id == f["project_id"])
+    if f["month"]:
+        q = q.filter(InvoiceCycle.invoice_month == f["month"])
+    if f["status"]:
+        q = q.filter(InvoiceCycle.status_code == f["status"])
+    cycles = q.all()
+    projects = Project.query.filter_by(active=True).order_by(Project.name).all()
+    months = [r[0] for r in db.session.query(
+        InvoiceCycle.invoice_month).distinct()
+        .order_by(InvoiceCycle.invoice_month.desc()).all() if r[0]]
+    css, label = _cycle_status_helpers()
+    return render_template("invoice_cycles.html", cycles=cycles,
+                           projects=projects, months=months, filters=f,
+                           CYCLE_CSS=css, CYCLE_STATUS=label)
+
+
+@bp.route("/invoices/new", methods=["GET", "POST"])
+@login_required
+def cycle_new():
+    if request.method == "POST":
+        project = Project.query.get(request.form.get("project_id", type=int))
+        if not project:
+            flash("Please choose a project.", "danger")
+            return redirect(url_for("invoices.cycle_new"))
+        month = request.form.get("invoice_month", "").strip()
+        if not month:
+            flash("Invoice month is required (format YYYY-MM).", "danger")
+            return redirect(url_for("invoices.cycle_new"))
+        target = _parse_date(request.form.get("target_submit_date"))
+        from web.workflow import create_invoice_cycle
+        cycle = create_invoice_cycle(
+            project, month, current_user,
+            invoice_number=request.form.get("invoice_number") or None,
+            invoice_amount=_parse_amount(
+                request.form.get("invoice_amount")),
+            target_submit_date=target,
+            cycle_name=request.form.get("cycle_name") or None,
+        )
+        flash(f"Invoice cycle created with {len(cycle.documents)} "
+              f"required documents.", "success")
+        return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+
+    project_id = request.args.get("project_id", type=int)
+    projects = (Project.query.join(Project.client)
+                .order_by(Project.client_id, Project.name).all())
+    selected = Project.query.get(project_id) if project_id else None
+    return render_template("invoice_cycle_form.html", projects=projects,
+                           selected=selected)
+
+
+# --------------------------------------------------------------------------- #
+# Cycle detail (timeline + document checklist)
+# --------------------------------------------------------------------------- #
+@bp.route("/invoices/<int:cycle_id>")
+@login_required
+def cycle_detail(cycle_id):
+    cycle = db.get_or_404(InvoiceCycle, cycle_id)
+    counts = compute_cycle_counts(cycle)
+    bottleneck, _ = find_bottleneck(cycle)
+    stages = delivery_stages(cycle)
+    css, label = _cycle_status_helpers()
+    doc_css = doc_status_css
+    doc_label = doc_status_label
+    departments = Department.query.order_by(Department.code).all()
+    employees = Employee.query.order_by(Employee.name).all()
+    # latest submission + payment for the action links
+    submission = cycle.latest_submission()
+    payment = cycle.payments[-1] if cycle.payments else None
+    return render_template(
+        "invoice_cycle_detail.html", cycle=cycle, counts=counts,
+        bottleneck=bottleneck, stages=stages, CYCLE_CSS=css,
+        CYCLE_STATUS=label, DOC_CSS=doc_css, DOC_STATUS=doc_label,
+        departments=departments, employees=employees,
+        submission=submission, payment=payment, today=date.today(),
+    )
+
+
+@bp.route("/invoices/<int:cycle_id>/delete", methods=["POST"])
+@login_required
+def cycle_delete(cycle_id):
+    cycle = db.get_or_404(InvoiceCycle, cycle_id)
+    name = cycle.cycle_name
+    db.session.delete(cycle)
+    audit(current_user, f"Deleted invoice cycle: {name}",
+          "InvoiceCycle", cycle_id)
+    db.session.commit()
+    flash("Invoice cycle deleted.", "info")
+    return redirect(url_for("invoices.list_cycles"))
+
+
+# --------------------------------------------------------------------------- #
+# Document detail + actions
+# --------------------------------------------------------------------------- #
+@bp.route("/documents/<int:doc_id>")
+@login_required
+def document_detail(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    steps = doc_steps(doc)
+    departments = Department.query.order_by(Department.code).all()
+    employees = Employee.query.order_by(Employee.name).all()
+    return render_template("document_detail.html", doc=doc, steps=steps,
+                           departments=departments, employees=employees,
+                           DOC_CSS=doc_status_css, DOC_STATUS=doc_status_label)
+
+
+@bp.route("/documents/<int:doc_id>/advance", methods=["POST"])
+@login_required
+def document_advance(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    to_step_id = request.form.get("to_step_id", type=int)
+    note = request.form.get("note", "").strip()
+    ok, message = advance_document(doc, current_user, to_step_id, note)
+    if not ok:
+        flash(message, "danger")
+    else:
+        flash(f"Document advanced: {message}.", "success")
+    return redirect(url_for("invoices.document_detail", doc_id=doc.id))
+
+
+@bp.route("/documents/<int:doc_id>/edit", methods=["POST"])
+@login_required
+def document_edit(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    doc.department_id = request.form.get("department_id", type=int) or None
+    doc.employee_id = request.form.get("employee_id", type=int) or None
+    doc.preparation_date = _parse_date(request.form.get("preparation_date"))
+    doc.due_date = _parse_date(request.form.get("due_date"))
+    doc.remarks = request.form.get("remarks") or None
+    db.session.add(DocumentHistory(
+        cycle_document_id=doc.id, user_id=current_user.id,
+        action="Details updated", from_status=doc.status_code,
+        to_status=doc.status_code,
+        note=f"Owner/date/remarks changed by {current_user.username}",
+    ))
+    audit(current_user, f"Updated document details: {doc.doc_type.code}",
+          "CycleDocument", doc.id)
+    recompute_cycle(doc.cycle)
+    db.session.commit()
+    flash("Document details updated.", "success")
+    return redirect(url_for("invoices.document_detail", doc_id=doc.id))
+
+
+@bp.route("/documents/<int:doc_id>/upload", methods=["POST"])
+@login_required
+def document_upload(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    file = request.files.get("attachment")
+    if file and file.filename:
+        ext = os.path.splitext(file.filename)[1]
+        fname = f"{uuid.uuid4().hex}{ext}"
+        file.save(os.path.join(current_app.config["UPLOAD_FOLDER"], fname))
+        doc.attachment_path = fname
+        db.session.add(DocumentHistory(
+            cycle_document_id=doc.id, user_id=current_user.id,
+            action="Attachment uploaded", from_status=doc.status_code,
+            to_status=doc.status_code, note=file.filename,
+        ))
+        audit(current_user,
+              f"Uploaded attachment for {doc.doc_type.code}: {file.filename}",
+              "CycleDocument", doc.id)
+        db.session.commit()
+        flash("Attachment uploaded.", "success")
+    else:
+        flash("No file selected.", "warning")
+    return redirect(url_for("invoices.document_detail", doc_id=doc.id))
+
+
+@bp.route("/documents/<int:doc_id>/attachment")
+@login_required
+def document_attachment(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    if not doc.attachment_path:
+        flash("No attachment on file.", "warning")
+        return redirect(url_for("invoices.document_detail", doc_id=doc.id))
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"],
+                               doc.attachment_path, as_attachment=True)
+
+
+@bp.route("/documents/<int:doc_id>/remove-attachment", methods=["POST"])
+@login_required
+def document_remove_attachment(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    doc.attachment_path = None
+    db.session.add(DocumentHistory(
+        cycle_document_id=doc.id, user_id=current_user.id,
+        action="Attachment removed", from_status=doc.status_code,
+        to_status=doc.status_code))
+    db.session.commit()
+    flash("Attachment removed.", "info")
+    return redirect(url_for("invoices.document_detail", doc_id=doc.id))
+
+
+# --------------------------------------------------------------------------- #
+# helpers
+# --------------------------------------------------------------------------- #
+def _parse_date(value):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _parse_amount(value):
+    if not value:
+        return None
+    try:
+        return float(value.replace(",", ""))
+    except ValueError:
+        return None

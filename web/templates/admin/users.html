@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Users · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Users{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>User accounts</h1><div class="sub">Create accounts and assign which documents each user can prepare and approve.</div></div>
+  <a class="btn" href="{{ url_for('admin.user_new') }}">+ New user</a>
+</div>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Username</th><th>Role</th><th>Employee</th><th>Status</th><th></th></tr>
+      {% for u in users %}
+      <tr>
+        <td class="strong">{{ u.username }}</td>
+        <td><span class="pill {{ {'Admin':'red','Manager':'blue','Finance':'teal','Operations':'amber'}.get(u.role,'grey') }}">{{ u.role }}</span></td>
+        <td>{{ u.employee.name if u.employee else '—' }}</td>
+        <td>{% if u.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}</td>
+        <td class="table-actions">
+          <a class="btn outline sm" href="{{ url_for('admin.user_permissions', user_id=u.id) }}">Permissions</a>
+          <a class="btn outline sm" href="{{ url_for('admin.user_edit', user_id=u.id) }}">Edit</a>
+          {% if u.username != 'admin' %}
+          <a class="btn ghost sm" href="{{ url_for('admin.user_toggle', user_id=u.id) }}"
+             onclick="return confirm('{{ 'Deactivate' if u.active else 'Activate' }} user {{ u.username }}?')">{{ 'Deactivate' if u.active else 'Activate' }}</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="5"><div class="empty">No users.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>How permissions work</h3></div>
+  <div class="card-body muted">
+    For every document type you can grant a user <b>Can prepare</b> (create / advance a document through
+    preparation) and <b>Can approve</b> (approve / complete it). A user with no entry for a document type
+    cannot act on it at all. Admin and Manager accounts bypass this matrix and can handle every document.
+  </div>
+</div>
+{% endblock %}

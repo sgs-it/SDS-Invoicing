@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Configure {{ tpl.name }} · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('masters.workflows') }}">Workflows</a> / {{ tpl.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ tpl.name }}</h1>
+    <div class="sub">Edit the ordered steps. A step marked <b>terminal</b> completes the document when reached.</div>
+  </div>
+  <a class="btn ghost" href="{{ url_for('masters.workflows') }}">Back to templates</a>
+</div>
+
+<form method="post" action="{{ url_for('masters.workflow_edit', template_id=tpl.id) }}">
+  <div class="card">
+    <div class="card-body">
+      <div class="form-group" style="max-width:480px;">
+        <label>Template name</label>
+        <input name="name" value="{{ tpl.name }}">
+      </div>
+      <table class="tbl" id="step-table">
+        <tr>
+          <th style="width:30px;">#</th>
+          <th>Step name</th>
+          <th style="width:170px;">Status code</th>
+          <th style="width:150px;">Waiting type</th>
+          <th>Waiting on (free text)</th>
+          <th style="width:90px;">Terminal</th>
+          <th style="width:60px;"></th>
+        </tr>
+        {% for s in tpl.steps %}
+        <tr class="step-row">
+          <td class="step-idx">{{ loop.index }}</td>
+          <td><input name="step_name" value="{{ s.name }}"></td>
+          <td><input name="step_status" value="{{ s.status_code }}"></td>
+          <td>
+            <select name="step_waiting_type">
+              {% for w in ['NONE','EMPLOYEE','DEPARTMENT','CLIENT','DOCUMENT'] %}
+              <option value="{{ w }}" {{ 'selected' if s.waiting_type == w }}>{{ w }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input name="step_waiting_on" value="{{ s.waiting_on or '' }}" placeholder="e.g. Client signature"></td>
+          <td style="text-align:center;"><input type="checkbox" name="step_terminal" value="1" style="width:auto;" {{ 'checked' if s.is_terminal }}></td>
+          <td><button type="button" class="btn red sm js-del-step">✕</button></td>
+        </tr>
+        {% endfor %}
+      </table>
+      <button type="button" class="btn ghost sm mt" id="add-step">+ Add step</button>
+    </div>
+    <div class="card-foot form-actions">
+      <button class="btn" type="submit">Save workflow</button>
+      <a class="btn ghost" href="{{ url_for('masters.workflows') }}">Cancel</a>
+    </div>
+  </div>
+</form>
+
+<script>
+window.STEP_TEMPLATE = `<tr class="step-row">
+  <td class="step-idx">0</td>
+  <td><input name="step_name" value=""></td>
+  <td><input name="step_status" value=""></td>
+  <td><select name="step_waiting_type">{% for w in ['NONE','EMPLOYEE','DEPARTMENT','CLIENT','DOCUMENT'] %}<option value="{{ w }}">{{ w }}</option>{% endfor %}</select></td>
+  <td><input name="step_waiting_on" value=""></td>
+  <td style="text-align:center;"><input type="checkbox" name="step_terminal" value="1" style="width:auto;"></td>
+  <td><button type="button" class="btn red sm js-del-step">✕</button></td>
+</tr>`;
+</script>
+{% endblock %}

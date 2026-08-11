@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Client Waiting · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Client Waiting{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Client Waiting</h1><div class="sub">What the company is waiting on from each client right now.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.client_waiting_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Client</th><th>Cycle</th><th>Document</th><th>Status</th><th>Waiting for</th><th>Due</th></tr>
+      {% for d in rows %}
+      <tr>
+        <td class="strong">{{ d.cycle.project.client.name }}</td>
+        <td class="small"><a href="{{ url_for('invoices.cycle_detail', cycle_id=d.cycle.id) }}">{{ d.cycle.cycle_name[:34] }}</a></td>
+        <td>{{ d.doc_type.icon }} {{ d.doc_type.name }}</td>
+        <td><span class="pill amber">{{ doc_status_label(d.status_code) }}</span></td>
+        <td class="small">{{ d.waiting_for or '—' }}</td>
+        <td class="small">{{ d.due_date.strftime('%d %b %Y') if d.due_date else '—' }}</td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">Nothing waiting on any client. 🎉</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

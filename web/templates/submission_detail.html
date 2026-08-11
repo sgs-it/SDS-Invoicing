@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Submission · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('submissions.list_submissions') }}">Submissions</a> / {{ sub.cycle.cycle_name[:30] }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Submission — {{ sub.cycle.cycle_name }}</h1>
+    <div class="sub">
+      <a href="{{ url_for('invoices.cycle_detail', cycle_id=sub.invoice_cycle_id) }}">{{ sub.cycle.project.name }}</a>
+      · <span class="pill teal">{{ sub.submission_method.name }}</span>
+      · <span class="pill {{ {'SUBMITTED':'blue','PENDING_APPROVAL':'amber','APPROVED':'green','REJECTED':'red','RESUBMITTED':'blue'}.get(sub.status,'grey') }}">{{ sub.status|replace('_',' ')|title }}</span>
+    </div>
+  </div>
+  <div class="toolbar">
+    {% if sub.status in ('SUBMITTED','RESUBMITTED','REJECTED') %}
+    <form method="post" action="{{ url_for('submissions.approve', submission_id=sub.id) }}">
+      <button class="btn green" type="submit">✓ Approve</button>
+    </form>
+    {% endif %}
+    {% if sub.status in ('SUBMITTED','PENDING_APPROVAL','RESUBMITTED') %}
+    <form method="post" action="{{ url_for('submissions.reject', submission_id=sub.id) }}"
+          onsubmit="return confirm('Mark this submission as rejected?')">
+      <input name="rejection_reason" placeholder="Rejection reason" style="width:220px;" required>
+      <button class="btn red" type="submit">Reject</button>
+    </form>
+    {% endif %}
+    {% if sub.status == 'REJECTED' %}
+    <form method="post" action="{{ url_for('submissions.resubmit', submission_id=sub.id) }}">
+      <button class="btn outline" type="submit">↻ Resubmit</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-head"><h3>Submission details</h3></div>
+    <div class="card-body">
+      <div class="stat-line"><span>Submission date</span><b>{{ sub.submission_date.strftime('%d %b %Y') }}</b></div>
+      <div class="stat-line"><span>Submitted by</span><b>{{ sub.submitted_by.username if sub.submitted_by else '—' }}</b></div>
+      <div class="stat-line"><span>Reference no.</span><b class="mono">{{ sub.reference_no or '—' }}</b></div>
+      <div class="stat-line"><span>Confirmation no.</span><b class="mono">{{ sub.confirmation_no or '—' }}</b></div>
+      <div class="stat-line"><span>Approval date</span><b>{{ sub.approval_date.strftime('%d %b %Y') if sub.approval_date else '—' }}</b></div>
+      <div class="stat-line"><span>Approved by</span><b>{{ sub.approved_by.username if sub.approved_by else '—' }}</b></div>
+      {% if sub.rejection_reason %}<div class="stat-line"><span>Rejection reason</span><b class="muted">{{ sub.rejection_reason }}</b></div>{% endif %}
+      {% if sub.remarks %}<div class="stat-line"><span>Remarks</span><b>{{ sub.remarks }}</b></div>{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>Edit reference details</h3></div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('submissions.edit', submission_id=sub.id) }}">
+        <div class="form-group"><label>Submission date</label>
+          <input type="date" name="submission_date" value="{{ sub.submission_date.isoformat() }}"></div>
+        <div class="form-group"><label>Reference no.</label>
+          <input name="reference_no" value="{{ sub.reference_no or '' }}"></div>
+        <div class="form-group"><label>Confirmation no.</label>
+          <input name="confirmation_no" value="{{ sub.confirmation_no or '' }}"></div>
+        <div class="form-group"><label>Remarks</label>
+          <textarea name="remarks">{{ sub.remarks or '' }}</textarea></div>
+        <button class="btn" type="submit">Save</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

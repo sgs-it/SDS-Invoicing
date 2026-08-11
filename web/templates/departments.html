@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Departments · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Departments{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Departments</h1><div class="sub">Teams used for document ownership and waiting-for analysis.</div></div>
+</div>
+<div class="card" style="max-width: 720px;">
+  <div class="card-head"><h3>+ Add department</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('masters.department_new') }}" class="form-row">
+      <div style="flex:1;"><input name="name" placeholder="Department name (e.g. Customer Service)" required></div>
+      <div style="width:140px;"><input name="code" placeholder="Code (e.g. CSD)" required></div>
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </div>
+</div>
+<div class="card" style="max-width: 720px;">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Code</th><th>Name</th><th>Employees</th></tr>
+      {% for d in rows %}
+      <tr><td class="mono strong">{{ d.code }}</td><td>{{ d.name }}</td><td>{{ d.employees.count() }}</td></tr>
+      {% else %}<tr><td colspan="3"><div class="empty">No departments.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Client Delay · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('reports.index') }}">Reports</a> / Client Delay{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Client delay</h1><div class="sub">Submissions and approvals that slipped past target dates.</div></div>
+  <div class="toolbar">
+    <button class="btn outline" data-print>🖨 Print</button>
+    <a class="btn outline" href="{{ url_for('reports.client_delay_csv') }}?{{ request.query_string.decode() }}">⬇ CSV</a>
+  </div>
+</div>
+{% include "reports/_filters.html" %}
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Client</th><th>Cycle</th><th>Target submit</th><th>Actual submit</th><th>Delay</th><th>Approval date</th><th>Approval lag</th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="strong">{{ r.sub.cycle.project.client.name }}</td>
+        <td class="small"><a href="{{ url_for('invoices.cycle_detail', cycle_id=r.sub.cycle.id) }}">{{ r.sub.cycle.cycle_name[:34] }}</a></td>
+        <td class="small">{{ r.sub.cycle.target_submit_date.strftime('%d %b %Y') if r.sub.cycle.target_submit_date else '—' }}</td>
+        <td class="small">{{ r.sub.submission_date.strftime('%d %b %Y') }}</td>
+        <td>{% if r.delay %}<span class="pill red">{{ r.delay }} days</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="small">{{ r.sub.approval_date.strftime('%d %b %Y') if r.sub.approval_date else '—' }}</td>
+        <td>{% if r.approval_delay %}<span class="pill amber">{{ r.approval_delay }} days</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      </tr>
+      {% else %}<tr><td colspan="7"><div class="empty">No delayed submissions found. ✅</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+<form class="filter-bar" method="get" action="{{ request.path }}">
+  <div class="f"><label>Client</label>
+    <select name="client_id" onchange="this.form.submit()">
+      <option value="">All clients</option>
+      {% for c in clients %}<option value="{{ c.id }}" {{ 'selected' if f.client_id == c.id }}>{{ c.name }}</option>{% endfor %}
+    </select></div>
+  <div class="f"><label>Project</label>
+    <select name="project_id" onchange="this.form.submit()">
+      <option value="">All projects</option>
+      {% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if f.project_id == p.id }}>{{ p.name[:40] }}</option>{% endfor %}
+    </select></div>
+  {% if departments is defined and departments %}
+  <div class="f"><label>Department</label>
+    <select name="department_id" onchange="this.form.submit()">
+      <option value="">All departments</option>
+      {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if f.department_id == d.id }}>{{ d.code }}</option>{% endfor %}
+    </select></div>
+  {% endif %}
+  {% if doc_types is defined and doc_types %}
+  <div class="f"><label>Document</label>
+    <select name="doc_type_id" onchange="this.form.submit()">
+      <option value="">All documents</option>
+      {% for d in doc_types %}<option value="{{ d.id }}" {{ 'selected' if f.doc_type_id == d.id }}>{{ d.code }}</option>{% endfor %}
+    </select></div>
+  {% endif %}
+  <div class="f"><label>Month</label>
+    <select name="month" onchange="this.form.submit()">
+      <option value="">All months</option>
+      {% for m in months %}<option value="{{ m }}" {{ 'selected' if f.month == m }}>{{ m }}</option>{% endfor %}
+    </select></div>
+  {% if methods is defined and methods %}
+  <div class="f"><label>Method</label>
+    <select name="method_id" onchange="this.form.submit()">
+      <option value="">All methods</option>
+      {% for m in methods %}<option value="{{ m.id }}" {{ 'selected' if f.method_id == m.id }}>{{ m.name }}</option>{% endfor %}
+    </select></div>
+  {% endif %}
+  {% if statuses is defined and statuses %}
+  <div class="f"><label>Status</label>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All statuses</option>
+      {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if f.status == s }}>{{ s|replace('_',' ')|title }}</option>{% endfor %}
+    </select></div>
+  {% endif %}
+  {% if f.client_id or f.project_id or f.department_id or f.doc_type_id or f.month or f.method_id or f.status %}
+  <a class="btn ghost" href="{{ request.path }}">Clear</a>{% endif %}
+</form>

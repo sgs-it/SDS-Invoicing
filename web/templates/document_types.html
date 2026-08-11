@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Document types · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Document types{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Document types</h1><div class="sub">Each type has its own configurable workflow template.</div></div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>+ Add document type</h3></div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('masters.document_type_new') }}" class="form-row">
+      <div style="flex:2;"><input name="name" placeholder="Name (e.g. Service Delivery Sheet (SDS))" required></div>
+      <div style="width:110px;"><input name="code" placeholder="Code (SDS)" required></div>
+      <div style="width:70px;"><input name="icon" placeholder="📄"></div>
+      <label class="checkline"><input type="checkbox" name="requires_client_sign"> Client sign</label>
+      <label class="checkline"><input type="checkbox" name="requires_grn"> GRN</label>
+      <div style="flex:1;"><input name="description" placeholder="Description"></div>
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Icon</th><th>Document type</th><th>Code</th><th>Client sign</th><th>GRN</th><th>Workflow</th></tr>
+      {% for r in rows %}
+      <tr>
+        <td style="font-size:18px;">{{ r.icon }}</td>
+        <td class="strong">{{ r.name }}</td>
+        <td class="mono">{{ r.code }}</td>
+        <td>{{ 'Yes' if r.requires_client_sign else 'No' }}</td>
+        <td>{{ 'Yes' if r.requires_grn else 'No' }}</td>
+        <td>
+          {% if r.id in tpl_map %}
+            <a class="btn outline sm" href="{{ url_for('masters.workflow_edit', template_id=tpl_map[r.id].id) }}">Configure</a>
+          {% else %}
+            <span class="muted">No template</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty">No document types.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

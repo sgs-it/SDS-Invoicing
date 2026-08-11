@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Submissions · {{ APP_NAME }}{% endblock %}
+{% block crumb %}Submissions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Submissions</h1><div class="sub">Every invoice submission across all projects and clients.</div></div>
+  <a class="btn" href="{{ url_for('submissions.new') }}">+ Register submission</a>
+</div>
+
+<form class="filter-bar" method="get" action="{{ url_for('submissions.list_submissions') }}">
+  <div class="f"><label>Status</label>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for s in ['SUBMITTED','PENDING_APPROVAL','APPROVED','REJECTED','RESUBMITTED'] %}
+      <option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s|replace('_',' ')|title }}</option>
+      {% endfor %}
+    </select></div>
+  <div class="f"><label>Method</label>
+    <select name="method_id" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for m in methods %}<option value="{{ m.id }}" {{ 'selected' if filters.method_id == m.id }}>{{ m.name }}</option>{% endfor %}
+    </select></div>
+  {% if filters.status or filters.method_id %}<a class="btn ghost" href="{{ url_for('submissions.list_submissions') }}">Clear</a>{% endif %}
+</form>
+
+<div class="card">
+  <div class="card-body table-wrap">
+    <table class="tbl">
+      <tr><th>Cycle</th><th>Submission date</th><th>Method</th><th>Submitted by</th><th>Reference no.</th><th>Confirmation no.</th><th>Status</th><th></th></tr>
+      {% for r in rows %}
+      <tr>
+        <td class="strong"><a href="{{ url_for('invoices.cycle_detail', cycle_id=r.invoice_cycle_id) }}">{{ r.cycle.cycle_name[:40] }}</a></td>
+        <td>{{ r.submission_date.strftime('%d %b %Y') }}</td>
+        <td><span class="pill teal">{{ r.submission_method.name }}</span></td>
+        <td>{{ r.submitted_by.username if r.submitted_by else '—' }}</td>
+        <td class="mono">{{ r.reference_no or '—' }}</td>
+        <td class="mono">{{ r.confirmation_no or '—' }}</td>
+        <td><span class="pill {{ {'SUBMITTED':'blue','PENDING_APPROVAL':'amber','APPROVED':'green','REJECTED':'red','RESUBMITTED':'blue'}.get(r.status,'grey') }}">{{ r.status|replace('_',' ')|title }}</span></td>
+        <td><a class="btn outline sm" href="{{ url_for('submissions.detail', submission_id=r.id) }}">Open</a></td>
+      </tr>
+      {% else %}<tr><td colspan="8"><div class="empty">No submissions recorded.</div></td></tr>{% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
