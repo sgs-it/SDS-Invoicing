@@ -7,7 +7,10 @@
     <h1>Invoice cycles</h1>
     <div class="sub">{{ cycles|length }} invoice cycles. Overall status is auto-computed from each document.</div>
   </div>
-  <a class="btn" href="{{ url_for('invoices.cycle_new') }}">+ New invoice cycle</a>
+  <div style="display: flex; gap: 8px;">
+    <a class="btn outline" href="{{ url_for('invoices.generate_monthly') }}">✨ Generate Monthly Cycles</a>
+    <a class="btn" href="{{ url_for('invoices.cycle_new') }}">+ New invoice cycle</a>
+  </div>
 </div>
 
 <form class="filter-bar" method="get" action="{{ url_for('invoices.list_cycles') }}">
@@ -20,7 +23,10 @@
   </div>
   <div class="f">
     <label>Month</label>
-    <input type="month" name="month" value="{{ filters.month }}" onchange="this.form.submit()">
+    <div style="display: flex; gap: 8px;">
+      <input type="month" name="month" value="{{ filters.month }}" onchange="this.form.submit()">
+      <button type="submit" name="export" value="1" class="btn blue">📥 Export Data</button>
+    </div>
   </div>
   <div class="f">
     <label>Status</label>

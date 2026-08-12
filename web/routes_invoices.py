@@ -129,6 +129,40 @@ def list_cycles():
     if f["status"]:
         q = q.filter(InvoiceCycle.status_code == f["status"])
     cycles = q.all()
+    
+    if request.args.get('export') == '1':
+        import csv
+        import io
+        from flask import Response
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Cycle Name', 'Project', 'Month', 'Invoice Number', 'Amount', 'Docs Completed', 'Docs Total', 'Status', 'Next Action'])
+        
+        for c in cycles:
+            c_completed = sum(1 for d in c.documents if d.is_completed())
+            c_total = len(c.documents)
+            status_label = CYCLE_STATUS_LABELS.get(c.status_code, c.status_code)
+            
+            writer.writerow([
+                c.cycle_name,
+                c.project.name,
+                c.invoice_month,
+                c.invoice_number or '',
+                str(c.invoice_amount) if c.invoice_amount else '',
+                c_completed,
+                c_total,
+                status_label,
+                c.next_action_text or ''
+            ])
+            
+        csv_data = output.getvalue()
+        return Response(
+            csv_data,
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment;filename=invoice_cycles_export.csv"}
+        )
+
     projects = Project.query.filter_by(active=True).order_by(Project.name).all()
     months = [r[0] for r in db.session.query(
         InvoiceCycle.invoice_month).distinct()
