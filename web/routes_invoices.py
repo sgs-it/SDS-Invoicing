@@ -164,12 +164,16 @@ def cycle_delete(cycle_id):
 @bp.route("/documents/<int:doc_id>")
 @login_required
 def document_detail(doc_id):
+    from web.workflow import user_can_prepare, user_can_approve
     doc = db.get_or_404(CycleDocument, doc_id)
     steps = doc_steps(doc)
     departments = Department.query.order_by(Department.code).all()
     employees = Employee.query.order_by(Employee.name).all()
+    can_prepare = user_can_prepare(current_user, doc.doc_type_id)
+    can_approve = user_can_approve(current_user, doc.doc_type_id)
     return render_template("document_detail.html", doc=doc, steps=steps,
                            departments=departments, employees=employees,
+                           can_prepare=can_prepare, can_approve=can_approve,
                            DOC_CSS=doc_status_css, DOC_STATUS=doc_status_label)
 
 

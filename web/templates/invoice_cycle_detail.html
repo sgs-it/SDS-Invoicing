@@ -100,7 +100,7 @@
       <div class="dc-foot">
         <a class="btn outline sm" href="{{ url_for('invoices.document_detail', doc_id=d.id) }}">Open & manage</a>
         {% set nxt = d.current_step %}
-        {% if not d.is_completed() %}
+        {% if not d.is_completed() and (user_can_prepare(current_user, d.doc_type_id) or user_can_approve(current_user, d.doc_type_id)) %}
         <form method="post" action="{{ url_for('invoices.document_advance', doc_id=d.id) }}" style="margin:0;">
           <button class="btn sm" type="submit">Advance to next step</button>
         </form>

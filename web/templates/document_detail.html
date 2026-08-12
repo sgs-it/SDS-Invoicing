@@ -38,7 +38,7 @@
 </div>
 
 {# ------------------------------------------------ advance ----------------- #}
-{% if not doc.is_completed() %}
+{% if not doc.is_completed() and (can_prepare or can_approve) %}
 <div class="card">
   <div class="card-head"><h3>⏭️ Advance workflow</h3></div>
   <div class="card-body">
@@ -69,6 +69,7 @@
     <div class="card">
       <div class="card-head"><h3>✏️ Ownership & dates</h3></div>
       <div class="card-body">
+        {% if can_prepare %}
         <form method="post" action="{{ url_for('invoices.document_edit', doc_id=doc.id) }}">
           <div class="form-grid">
             <div class="form-group"><label>Department</label>
@@ -88,6 +89,20 @@
           </div>
           <button class="btn" type="submit">Save details</button>
         </form>
+        {% else %}
+        <div class="form-grid">
+          <div class="form-group"><label>Department</label>
+            <div>{{ doc.department.name if doc.department else '— None —' }}</div></div>
+          <div class="form-group"><label>Responsible employee</label>
+            <div>{{ doc.employee.name if doc.employee else '— None —' }}</div></div>
+          <div class="form-group"><label>Preparation date</label>
+            <div>{{ doc.preparation_date.strftime('%d %b %Y') if doc.preparation_date else '— None —' }}</div></div>
+          <div class="form-group"><label>Due date</label>
+            <div>{{ doc.due_date.strftime('%d %b %Y') if doc.due_date else '— None —' }}</div></div>
+          <div class="form-group" style="grid-column: 1 / -1;"><label>Remarks</label>
+            <div>{{ doc.remarks or '— None —' }}</div></div>
+        </div>
+        {% endif %}
       </div>
     </div>
 
@@ -98,18 +113,22 @@
           <div class="flex mb">
             <span>📎 File on record</span>
             <a class="btn outline sm" href="{{ url_for('invoices.document_attachment', doc_id=doc.id) }}">Download</a>
+            {% if can_prepare %}
             <form method="post" action="{{ url_for('invoices.document_remove_attachment', doc_id=doc.id) }}" style="margin:0;">
               <button class="btn red sm" type="submit">Remove</button>
             </form>
+            {% endif %}
           </div>
         {% else %}
           <div class="empty">No attachment uploaded.</div>
         {% endif %}
+        {% if can_prepare %}
         <form method="post" action="{{ url_for('invoices.document_upload', doc_id=doc.id) }}"
               enctype="multipart/form-data" class="form-row">
           <input type="file" name="attachment" required>
           <button class="btn" type="submit">Upload</button>
         </form>
+        {% endif %}
       </div>
     </div>
   </div>
