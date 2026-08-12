@@ -117,6 +117,10 @@ def logout():
 @bp.route("/change-password", methods=["GET", "POST"])
 @login_required
 def change_password():
+    if not current_user.password_hash:
+        flash("You are signed in via Google. Password changes are not applicable.", "warning")
+        return redirect(url_for("dashboard.home"))
+
     if request.method == "POST":
         current = request.form.get("current_password", "")
         new = request.form.get("new_password", "")

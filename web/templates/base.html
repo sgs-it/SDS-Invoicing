@@ -33,6 +33,7 @@
         <a class="bell" href="{{ url_for('notifications.index') }}" title="Notifications">🔔
           {% if unread_count %}<span class="dot">{{ unread_count if unread_count < 100 else '99+' }}</span>{% endif %}
         </a>
+        {% if current_user.password_hash %}
         <a href="{{ url_for('auth.change_password') }}" class="user-chip" title="Change password">
           <span class="avatar">{{ current_user.username[:1]|upper }}</span>
           <span class="meta">
@@ -40,6 +41,15 @@
             <span class="role">{{ current_user.role }}</span>
           </span>
         </a>
+        {% else %}
+        <div class="user-chip">
+          <span class="avatar">{{ current_user.username[:1]|upper }}</span>
+          <span class="meta">
+            <span class="name">{{ current_user.username }}</span>
+            <span class="role">{{ current_user.role }}</span>
+          </span>
+        </div>
+        {% endif %}
         <a class="btn ghost sm" href="{{ url_for('auth.logout') }}">Sign out</a>
       </div>
     </div>
