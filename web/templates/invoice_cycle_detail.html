@@ -63,51 +63,94 @@
 
 {# ------------------------------------------------ docs -------------------- #}
 <div class="card">
-  <div class="card-head">
-    <h3>📄 Document checklist ({{ cycle.documents|length }})</h3>
+  <div class="card-head" style="justify-content: space-between;">
+    <h3>Required Documents Tracking</h3>
+    <a href="#" class="btn ghost sm">View All</a>
   </div>
-  <div class="card-body">
-    {% for d in cycle.documents %}
-    <div class="doc-card">
-      <div class="dc-head">
-        <div class="ic">{{ d.doc_type.icon }}</div>
-        <div class="t">
-          <div class="n">{{ d.doc_type.name }}</div>
-          <div class="m">{{ d.cycle.cycle_name }}</div>
-        </div>
-        <span class="pill {{ DOC_CSS(d.status_code) }}">{{ DOC_STATUS(d.status_code) }}</span>
-        {% if d.is_completed() %}<span class="pill green">✓ Completed</span>{% endif %}
-        {% if d.due_date and d.due_date < today and not d.is_completed() %}<span class="pill red">Overdue</span>{% endif %}
-      </div>
-      <div class="dc-body">
-        <div class="kv"><div class="k">Responsible</div>
-          <div class="v">{{ d.employee.name if d.employee else '—' }}<br>
-            <span class="muted small">{{ d.department.code if d.department else '' }}</span></div></div>
-        <div class="kv"><div class="k">Due date</div><div class="v">{{ d.due_date.strftime('%d %b %Y') if d.due_date else '—' }}</div></div>
-        <div class="kv"><div class="k">Waiting for</div><div class="v">{{ d.waiting_for or '—' }}</div></div>
-        <div class="kv"><div class="k">Approval</div><div class="v">
-          {% if d.approval_status == 'APPROVED' %}<span class="pill green">Approved</span>
-          {% elif d.approval_status == 'REJECTED' %}<span class="pill red">Rejected</span>
-          {% elif d.approval_status == 'PENDING' %}<span class="pill amber">Pending</span>
-          {% else %}<span class="pill grey">—</span>{% endif %}</div></div>
-        <div class="kv"><div class="k">Submission</div><div class="v">{{ d.submission_status or '—' }}</div></div>
-        <div class="kv"><div class="k">Attachment</div><div class="v">
-          {% if d.attachment_path %}
-            <a href="{{ url_for('invoices.document_attachment', doc_id=d.id) }}">📎 Download</a>
-          {% else %}—{% endif %}</div></div>
-      </div>
-      {% if d.remarks %}<div class="dc-foot"><span class="small"><b>Remarks:</b> {{ d.remarks[:160] }}</span></div>{% endif %}
-      <div class="dc-foot">
-        <a class="btn outline sm" href="{{ url_for('invoices.document_detail', doc_id=d.id) }}">Open & manage</a>
-        {% set nxt = d.current_step %}
-        {% if not d.is_completed() and (user_can_prepare(current_user, d.doc_type_id) or user_can_approve(current_user, d.doc_type_id)) %}
-        <form method="post" action="{{ url_for('invoices.document_advance', doc_id=d.id) }}" style="margin:0;">
-          <button class="btn sm" type="submit">Advance to next step</button>
-        </form>
+  <div class="card-body table-wrap">
+    <table class="tbl" style="margin-bottom: 0;">
+      <tr>
+        <th>Document</th>
+        <th style="width: 150px;">Status</th>
+        <th style="width: 120px;">Actions</th>
+      </tr>
+      {% for d in cycle.documents %}
+      <tr>
+        <td>
+          <form method="post" action="{{ url_for('invoices.document_quick_toggle', doc_id=d.id) }}" id="toggle_form_{{ d.id }}" style="display:inline;">
+            <input type="hidden" name="completed" value="{{ '0' if d.is_completed() else '1' }}">
+            {% if d.doc_type.code == 'INV' %}
+            <input type="hidden" name="invoice_number" id="inv_num_{{ d.id }}">
+            {% endif %}
+            <input type="checkbox" onchange="toggleDoc(this, '{{ d.id }}', '{{ d.doc_type.code }}')" {{ 'checked' if d.is_completed() else '' }} style="margin-right: 12px; transform: scale(1.3); cursor: pointer;">
+          </form>
+          <span style="font-weight: 500;">{{ d.doc_type.name }}</span>
+        </td>
+        <td>
+          {% if d.is_completed() %}
+          <span class="pill green">Completed</span>
+          {% else %}
+          <span class="pill amber">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display: flex; gap: 12px;">
+            <a href="{{ url_for('invoices.document_detail', doc_id=d.id) }}" title="View / Manage"><span style="font-size: 1.2rem;">👁</span></a>
+            <a href="{{ url_for('invoices.document_detail', doc_id=d.id) }}#comments" title="Comments"><span style="font-size: 1.2rem;">💬</span></a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="empty">No required documents for this cycle.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+
+<script>
+function toggleDoc(checkbox, docId, docCode) {
+    if (checkbox.checked && docCode === 'INV') {
+        const invNum = prompt("Enter invoice number(s) (optional):");
+        if (invNum !== null) {
+            document.getElementById('inv_num_' + docId).value = invNum;
+            document.getElementById('toggle_form_' + docId).submit();
+        } else {
+            checkbox.checked = false; // User cancelled
+        }
+    } else {
+        document.getElementById('toggle_form_' + docId).submit();
+    }
+}
+</script>
+
+<div class="card mt">
+  <div class="card-head">
+    <h3>Invoice Cycles Steps Overview</h3>
+  </div>
+  <div class="card-body table-wrap">
+    <table class="tbl" style="margin-bottom: 0;">
+      <tr>
+        <th>Step</th>
+        <th>Person</th>
+        <th>Status</th>
+        <th>Waiting On</th>
+      </tr>
+      {% set pending_found = false %}
+      {% for d in cycle.documents %}
+        {% if not d.is_completed() and not pending_found %}
+          {% set pending_found = true %}
+          <tr>
+            <td>Process {{ d.doc_type.name }}</td>
+            <td>{{ d.employee.name if d.employee else d.department.name if d.department else 'Assigned Team' }}</td>
+            <td><span class="pill amber">Pending</span></td>
+            <td>{{ d.waiting_for or '-' }}</td>
+          </tr>
         {% endif %}
-      </div>
-    </div>
-    {% else %}<div class="empty">No required documents for this cycle.</div>{% endfor %}
+      {% endfor %}
+      {% if not pending_found %}
+      <tr><td colspan="4" class="empty">All document processing complete!</td></tr>
+      {% endif %}
+    </table>
   </div>
 </div>
 

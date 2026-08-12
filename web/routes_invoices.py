@@ -353,6 +353,41 @@ def document_remove_attachment(doc_id):
     return redirect(url_for("invoices.document_detail", doc_id=doc.id))
 
 
+@bp.route("/documents/<int:doc_id>/quick-toggle", methods=["POST"])
+@login_required
+def document_quick_toggle(doc_id):
+    doc = db.get_or_404(CycleDocument, doc_id)
+    cycle = doc.cycle
+    
+    completed = request.form.get("completed") == "1"
+    invoice_number = request.form.get("invoice_number", "").strip()
+    
+    old_status = doc.status_code
+    
+    if completed:
+        doc.status_code = "COMPLETED"
+        doc.completed_at = datetime.utcnow()
+        if invoice_number and doc.doc_type.code == "INV":
+            cycle.invoice_number = invoice_number
+        action = "Quick marked as completed"
+    else:
+        doc.status_code = "PREPARING"
+        doc.completed_at = None
+        action = "Quick marked as pending"
+        
+    db.session.add(DocumentHistory(
+        cycle_document_id=doc.id, user_id=current_user.id,
+        action=action, from_status=old_status,
+        to_status=doc.status_code))
+        
+    db.session.commit()
+    recompute_cycle(cycle)
+    db.session.commit()
+    
+    flash(f"{doc.doc_type.name} updated.", "success")
+    return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+
+
 # --------------------------------------------------------------------------- #
 # helpers
 # --------------------------------------------------------------------------- #
