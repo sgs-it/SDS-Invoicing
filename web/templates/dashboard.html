@@ -3,14 +3,21 @@
 {% block crumb %}Dashboard{% endblock %}
 {% block content %}
 
-<div class="top-header">
+<div class="top-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
   <div>
     <h1>Dashboard</h1>
     <p>Welcome back, {{ current_user.username }}</p>
   </div>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <label style="font-size: 14px; color: var(--text-muted); margin-right: 4px;">Period:</label>
+    <input type="month" name="from_month" form="filterForm" value="{{ filters.from_month }}" onchange="document.getElementById('filterForm').submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="From Month">
+    <span style="color: var(--text-muted); font-size: 14px;">to</span>
+    <input type="month" name="to_month" form="filterForm" value="{{ filters.to_month }}" onchange="document.getElementById('filterForm').submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="To Month">
+    <button type="submit" name="export" value="1" form="filterForm" class="btn blue" style="padding: 0.75rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 6px; margin-left: 8px;">📥 Export Data</button>
+  </div>
 </div>
 
-<form class="controls-container" method="get" action="{{ url_for('dashboard.home') }}" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+<form id="filterForm" class="controls-container" method="get" action="{{ url_for('dashboard.home') }}" style="margin-bottom: 2rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
   <div class="search-box" style="flex: 1; min-width: 250px;">
     <select name="client_id" class="filter-select" onchange="this.form.submit()" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
       <option value="">All clients</option>
@@ -28,12 +35,8 @@
       <option value="">All methods</option>
       {% for m in methods %}<option value="{{ m.id }}" {{ 'selected' if filters.method_id == m.id }}>{{ m.name }}</option>{% endfor %}
     </select>
-    <div style="display: flex; gap: 8px;">
-      <input type="month" name="month" value="{{ filters.month }}" onchange="this.form.submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
-      <button type="submit" name="export" value="1" class="btn blue" style="padding: 0.75rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 6px;">📥 Export Data</button>
-    </div>
   </div>
-  {% if filters.client_id or filters.project_id or filters.month or filters.method_id or filters.status %}
+  {% if filters.client_id or filters.project_id or filters.from_month or filters.to_month or filters.method_id or filters.status %}
   <a class="btn ghost" href="{{ url_for('dashboard.home') }}">Clear</a>
   {% endif %}
 </form>
