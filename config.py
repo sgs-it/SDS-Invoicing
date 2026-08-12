@@ -11,8 +11,12 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 DATA_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DATA_DIR, "sds.db")
-UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 
+# Use /tmp for uploads on Vercel due to read-only filesystem
+if os.environ.get("VERCEL") == "1":
+    UPLOAD_DIR = "/tmp/sds_uploads"
+else:
+    UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "sds-change-me-secret-key")
