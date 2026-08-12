@@ -20,10 +20,7 @@
   </div>
   <div class="f">
     <label>Month</label>
-    <select name="month" onchange="this.form.submit()">
-      <option value="">All months</option>
-      {% for m in months %}<option value="{{ m }}" {{ 'selected' if filters.month == m }}>{{ m }}</option>{% endfor %}
-    </select>
+    <input type="month" name="month" value="{{ filters.month }}" onchange="this.form.submit()">
   </div>
   <div class="f">
     <label>Status</label>
