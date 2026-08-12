@@ -19,6 +19,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from web.auth import role_required
 
 from web import db
 from web.models import (
