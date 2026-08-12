@@ -187,7 +187,7 @@ def home():
         agg=agg, cycles=cycles, ready=ready, submitted=submitted,
         approved=approved, pay_pending=pay_pending,
         overdue_payments=overdue_payments, outstanding=round(outstanding, 2),
-        active_cycles=active_cycles, bottlenecks=bottlenecks,
+        active_cycles=active_cycles, completed_cycles=len(cycles)-active_cycles, bottlenecks=bottlenecks,
         overdue_docs=overdue_docs, upcoming_docs=upcoming_docs,
         activity=activity, clients=clients, projects=projects,
         methods=methods, months=_month_list(),
