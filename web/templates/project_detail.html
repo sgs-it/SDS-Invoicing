@@ -16,6 +16,7 @@
     </div>
   </div>
   <div class="toolbar">
+    <a class="btn outline" href="{{ url_for('masters.project_renew', project_id=project.id) }}">Renew contract</a>
     <a class="btn outline" href="{{ url_for('masters.project_edit', project_id=project.id) }}">Edit project</a>
     <form method="post" action="{{ url_for('masters.project_delete', project_id=project.id) }}"
           onsubmit="return confirm('Delete this project and ALL its invoice cycles, documents, submissions and payments? This cannot be undone.')">

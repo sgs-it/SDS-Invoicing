@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Generate Monthly Cycles · {{ APP_NAME }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('invoices.list_cycles') }}">Invoice cycles</a> / Generate{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Generate Monthly Cycles</h1>
+    <div class="sub">Automatically create tracking cycles for all active projects for a specific month.</div>
+  </div>
+</div>
+
+<div class="card" style="max-width: 500px;">
+  <div class="card-head">
+    <h3>🗓️ Select Target Month</h3>
+  </div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('invoices.generate_monthly') }}">
+      <div class="form-group">
+        <label>Month & Year</label>
+        <input type="month" name="target_month" required>
+        <div class="hint mt">This process will check all active projects. It will automatically skip any project where the contract has expired or hasn't started yet, and it will skip projects that already have a cycle for this month.</div>
+      </div>
+      <div class="form-actions mt">
+        <button type="submit" class="btn lg" style="width: 100%; justify-content: center;">Generate Cycles</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

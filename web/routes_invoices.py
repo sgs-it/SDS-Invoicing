@@ -55,6 +55,60 @@ def _cycle_status_helpers():
     return cycle_status_css, CallableDict(CYCLE_STATUS_LABELS)
 
 
+@bp.route("/invoices/generate-monthly", methods=["GET", "POST"])
+@role_required("Admin", "Manager")
+def generate_monthly():
+    if request.method == "POST":
+        target_month = request.form.get("target_month", "").strip()
+        if not target_month:
+            flash("Target month is required.", "danger")
+            return redirect(url_for("invoices.generate_monthly"))
+            
+        from datetime import datetime
+        try:
+            # target_month is YYYY-MM
+            dt = datetime.strptime(target_month, "%Y-%m").date()
+        except ValueError:
+            flash("Invalid month format.", "danger")
+            return redirect(url_for("invoices.generate_monthly"))
+            
+        projects = Project.query.filter_by(active=True).all()
+        created = 0
+        skipped = 0
+        
+        from web.workflow import create_invoice_cycle
+        from datetime import date
+        import calendar
+        
+        # End of the selected month
+        last_day = calendar.monthrange(dt.year, dt.month)[1]
+        month_end = date(dt.year, dt.month, last_day)
+        
+        for p in projects:
+            # Check contract validity
+            if p.contract_start and p.contract_start > month_end:
+                skipped += 1
+                continue
+            if p.contract_end and p.contract_end < dt:
+                skipped += 1
+                continue
+                
+            # Check if cycle already exists
+            existing = InvoiceCycle.query.filter_by(project_id=p.id, invoice_month=target_month).first()
+            if existing:
+                skipped += 1
+                continue
+                
+            # Create cycle
+            create_invoice_cycle(p, target_month, current_user, target_submit_date=month_end)
+            created += 1
+            
+        db.session.commit()
+        flash(f"Successfully generated {created} invoice cycles for {target_month}. (Skipped {skipped} inactive/existing).", "success")
+        return redirect(url_for("invoices.list_cycles", month=target_month))
+        
+    return render_template("generate_monthly.html")
+
 # --------------------------------------------------------------------------- #
 # Cycle list + create
 # --------------------------------------------------------------------------- #

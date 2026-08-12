@@ -127,6 +127,19 @@ def project_edit(project_id):
                            doc_types=doc_types, selected_docs=selected_docs)
 
 
+@bp.route("/projects/<int:project_id>/renew", methods=["GET", "POST"])
+@role_required("Admin", "Manager")
+def project_renew(project_id):
+    project = Project.query.get_or_404(project_id)
+    if request.method == "POST":
+        project.contract_start = _parse_date(request.form.get("contract_start"))
+        project.contract_end = _parse_date(request.form.get("contract_end"))
+        db.session.commit()
+        _flash_success("Contract dates updated successfully.")
+        return redirect(url_for("masters.project_detail", project_id=project.id))
+    return render_template("project_renew.html", project=project)
+
+
 def _add_requirements_from_form(project, form):
     codes = form.getlist("required_docs")
     for i, code in enumerate(codes):
