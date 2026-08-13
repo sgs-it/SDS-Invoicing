@@ -172,6 +172,7 @@ table.tbl td { padding: 10px 12px; border-bottom: 1px solid var(--border); verti
 table.tbl tr:hover td { background: #fafbfe; }
 table.tbl tr:last-child td { border-bottom: none; }
 .tbl .strong { font-weight: 600; }
+.table-actions { white-space: nowrap; text-align: right; }
 
 /* ------------------------------------------------------------------ buttons */
 .btn {
