@@ -44,6 +44,11 @@ def _active_buckets(doc):
 def _filtered_cycles(f):
     """Invoice cycles matching the dashboard filters."""
     q = (InvoiceCycle.query
+         .options(
+             joinedload(InvoiceCycle.documents),
+             joinedload(InvoiceCycle.payments),
+             joinedload(InvoiceCycle.project)
+         )
          .join(Project)
          .join(Client, Client.id == Project.client_id)
          .join(SubmissionMethod,
