@@ -10,46 +10,59 @@
   <a class="btn" href="{{ url_for('masters.project_new') }}">+ New project</a>
 </div>
 
-<div class="card">
-  <div class="card-body table-wrap">
-    <table class="tbl">
-      <tr>
-        <th style="width: 30%; min-width: 250px;">Project</th>
-        <th>Client</th>
-        <th>Job code</th>
-        <th>Submission method</th>
-        <th>Required documents</th>
-        <th>Default team</th>
-        <th>Contract end</th>
-        <th>Active</th>
-        <th style="text-align: right; width: 100%;">Actions</th>
-      </tr>
-      {% for p in projects %}
-      <tr>
-        <td class="strong"><a href="{{ url_for('masters.project_detail', project_id=p.id) }}">{{ p.name }}</a></td>
-        <td><a href="#">{{ p.client.name }}</a></td>
-        <td class="mono">{{ p.job_code.replace(',', ', ') if p.job_code else '—' }}</td>
-        <td><span class="pill teal">{{ p.submission_method.name }}</span></td>
-        <td>
-          {% for r in p.requirements %}<span class="pill blue">{{ r.doc_type.code }}</span> {% endfor %}
-        </td>
-        <td>{{ p.default_team_code or '—' }}</td>
-        <td class="small">
+<div class="grid2" style="margin-top: 20px;">
+  {% for p in projects %}
+  <div class="card" style="padding: 20px; position: relative;">
+    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
+      <div>
+        <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">
+          <a href="{{ url_for('masters.project_detail', project_id=p.id) }}" style="color: var(--primary);">{{ p.name }}</a>
+        </div>
+        <div style="font-size: 13px; color: var(--muted);">Client: <span style="color: var(--text); font-weight: 600;">{{ p.client.name }}</span></div>
+      </div>
+      <div>
+        {% if p.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-bottom: 16px;">
+      <div>
+        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Job Code</div>
+        <div class="mono" style="font-weight: 600;">{{ p.job_code.replace(',', ', ') if p.job_code else '—' }}</div>
+      </div>
+      <div>
+        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Default Team</div>
+        <div style="font-weight: 600;">{{ p.default_team_code or '—' }}</div>
+      </div>
+      <div>
+        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Method</div>
+        <div><span class="pill teal">{{ p.submission_method.name }}</span></div>
+      </div>
+      <div>
+        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Contract End</div>
+        <div style="font-weight: 600;">
           {% if p.contract_end %}
             {{ p.contract_end.strftime('%d %b %Y') }}
             {% if p.contract_end < today %}<span class="pill red">expired</span>{% endif %}
           {% else %}<span class="muted">ongoing</span>{% endif %}
-        </td>
-        <td>{% if p.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}</td>
-        <td class="table-actions">
-          <a class="btn outline sm" href="{{ url_for('masters.project_edit', project_id=p.id) }}">Edit</a>
-          <a class="btn ghost sm" href="{{ url_for('masters.project_toggle', project_id=p.id) }}">{{ 'Deactivate' if p.active else 'Activate' }}</a>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="9"><div class="empty">No projects yet. Run the Excel migration or add one.</div></td></tr>
-      {% endfor %}
-    </table>
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin-bottom: 16px;">
+      <div style="color: var(--muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Required Documents</div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        {% for r in p.requirements %}<span class="pill blue">{{ r.doc_type.code }}</span>{% endfor %}
+      </div>
+    </div>
+    
+    <div style="border-top: 1px solid var(--border); padding-top: 16px; display: flex; gap: 10px;">
+      <a class="btn outline sm" style="flex: 1; justify-content: center;" href="{{ url_for('masters.project_edit', project_id=p.id) }}">Edit</a>
+      <a class="btn ghost sm" style="flex: 1; justify-content: center;" href="{{ url_for('masters.project_toggle', project_id=p.id) }}">{{ 'Deactivate' if p.active else 'Activate' }}</a>
+    </div>
   </div>
+  {% else %}
+  <div class="empty" style="grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--muted);">No projects yet. Run the Excel migration or add one.</div>
+  {% endfor %}
 </div>
 {% endblock %}
