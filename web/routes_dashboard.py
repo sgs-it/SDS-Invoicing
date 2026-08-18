@@ -45,9 +45,10 @@ def _filtered_cycles(f):
     """Invoice cycles matching the dashboard filters."""
     q = (InvoiceCycle.query
          .options(
-             joinedload(InvoiceCycle.documents),
+             joinedload(InvoiceCycle.documents).joinedload(CycleDocument.doc_type),
              joinedload(InvoiceCycle.payments),
-             joinedload(InvoiceCycle.project)
+             joinedload(InvoiceCycle.project).joinedload(Project.client),
+             joinedload(InvoiceCycle.project).joinedload(Project.submission_method)
          )
          .join(Project)
          .join(Client, Client.id == Project.client_id)
