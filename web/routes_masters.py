@@ -34,7 +34,14 @@ def _flash_success(message):
 @role_required("Admin", "Manager")
 def projects():
     from datetime import date
-    rows = (Project.query.join(Client)
+    from sqlalchemy.orm import joinedload
+    rows = (Project.query.options(
+                joinedload(Project.client),
+                joinedload(Project.submission_method),
+                joinedload(Project.requirements).joinedload(ProjectDocumentRequirement.doc_type),
+                joinedload(Project.default_team)
+            )
+            .join(Client)
             .order_by(Client.name, Project.name).all())
     return render_template("projects.html", projects=rows,
                            today=date.today())
