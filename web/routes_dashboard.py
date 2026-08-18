@@ -58,10 +58,10 @@ def _filtered_cycles(f):
         q = q.filter(Client.id == f["client_id"])
     if f.get("project_id"):
         q = q.filter(InvoiceCycle.project_id == f["project_id"])
-    if f.get("from_month"):
-        q = q.filter(InvoiceCycle.invoice_month >= f["from_month"])
-    if f.get("to_month"):
-        q = q.filter(InvoiceCycle.invoice_month <= f["to_month"])
+    if f.get("from_date"):
+        q = q.filter(InvoiceCycle.invoice_month >= f["from_date"][:7])
+    if f.get("to_date"):
+        q = q.filter(InvoiceCycle.invoice_month <= f["to_date"][:7])
     if f.get("method_id"):
         q = q.filter(Project.submission_method_id == f["method_id"])
     if f.get("status"):
@@ -81,8 +81,8 @@ def home():
     f = {
         "client_id": request.args.get("client_id", type=int),
         "project_id": request.args.get("project_id", type=int),
-        "from_month": request.args.get("from_month", "") or "",
-        "to_month": request.args.get("to_month", "") or "",
+        "from_date": request.args.get("from_date", "") or "",
+        "to_date": request.args.get("to_date", "") or "",
         "method_id": request.args.get("method_id", type=int),
         "status": request.args.get("status", "") or "",
     }

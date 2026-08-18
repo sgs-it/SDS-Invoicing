@@ -10,9 +10,9 @@
   </div>
   <div style="display: flex; gap: 8px; align-items: center;">
     <label style="font-size: 14px; color: var(--text-muted); margin-right: 4px;">Period:</label>
-    <input type="month" name="from_month" form="filterForm" value="{{ filters.from_month }}" onchange="document.getElementById('filterForm').submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="From Month">
+    <input type="date" name="from_date" form="filterForm" value="{{ filters.from_date }}" onchange="document.getElementById('filterForm').submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="From Date">
     <span style="color: var(--text-muted); font-size: 14px;">to</span>
-    <input type="month" name="to_month" form="filterForm" value="{{ filters.to_month }}" onchange="document.getElementById('filterForm').submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="To Month">
+    <input type="date" name="to_date" form="filterForm" value="{{ filters.to_date }}" onchange="document.getElementById('filterForm').submit()" class="filter-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="To Date">
     <button type="submit" name="export" value="1" form="filterForm" class="btn blue" style="padding: 0.75rem 1rem; border-radius: 8px; display: flex; align-items: center; gap: 6px; margin-left: 8px;">📥 Export Data</button>
   </div>
 </div>
