@@ -38,8 +38,7 @@ def projects():
     rows = (Project.query.options(
                 joinedload(Project.client),
                 joinedload(Project.submission_method),
-                joinedload(Project.requirements).joinedload(ProjectDocumentRequirement.doc_type),
-                joinedload(Project.default_team)
+                joinedload(Project.requirements).joinedload(ProjectDocumentRequirement.doc_type)
             )
             .join(Client)
             .order_by(Client.name, Project.name).all())

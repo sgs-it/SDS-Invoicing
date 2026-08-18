@@ -125,20 +125,30 @@ class CallableDict(dict):
 # --------------------------------------------------------------------------- #
 # Settings
 # --------------------------------------------------------------------------- #
-def get_setting(key, default=""):
-    row = SystemSetting.query.filter_by(key=key).first()
-    return row.value if row and row.value is not None else default
+_SETTINGS_CACHE = {}
+
+
+def get_setting(key, default=None):
+    """Get a system setting, caching the result to avoid DB queries on every page render."""
+    if key in _SETTINGS_CACHE:
+        return _SETTINGS_CACHE[key]
+
+    s = SystemSetting.query.filter_by(key=key).first()
+    val = s.value if s else default
+    _SETTINGS_CACHE[key] = val
+    return val
 
 
 def set_setting(key, value):
-    row = SystemSetting.query.filter_by(key=key).first()
-    if row is None:
-        row = SystemSetting(key=key, value=str(value))
-        db.session.add(row)
+    """Set a system setting and update the cache."""
+    s = SystemSetting.query.filter_by(key=key).first()
+    if s:
+        s.value = value
     else:
-        row.value = str(value)
+        db.session.add(SystemSetting(key=key, value=value))
+    _SETTINGS_CACHE[key] = value
     db.session.commit()
-    return row
+    return s
 
 
 # --------------------------------------------------------------------------- #

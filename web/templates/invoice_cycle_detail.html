@@ -64,13 +64,13 @@
 {# ------------------------------------------------ docs -------------------- #}
 <div class="card">
   <div class="card-head" style="justify-content: space-between;">
-    <h3>Required Documents Tracking</h3>
+    <h3>Cycle Progress Tracking</h3>
     <a href="#" class="btn ghost sm">View All</a>
   </div>
   <div class="card-body table-wrap">
     <table class="tbl" style="margin-bottom: 0;">
       <tr>
-        <th>Document</th>
+        <th>Step / Document</th>
         <th style="width: 150px;">Status</th>
         <th style="width: 120px;">Actions</th>
       </tr>
@@ -82,7 +82,7 @@
             {% if d.doc_type.code == 'INV' %}
             <input type="hidden" name="invoice_number" id="inv_num_{{ d.id }}">
             {% endif %}
-            <input type="checkbox" onchange="toggleDoc(this, '{{ d.id }}', '{{ d.doc_type.code }}')" {{ 'checked' if d.is_completed() else '' }} style="margin-right: 12px; transform: scale(1.3); cursor: pointer;">
+            <input type="checkbox" onchange="toggleDoc(this, '{{ d.id }}', '{{ d.doc_type.code }}')" {{ 'checked' if d.is_completed() else '' }} {{ 'disabled' if d.is_completed() and current_user.role.name not in ('Admin', 'Manager') else '' }} style="margin-right: 12px; transform: scale(1.3); cursor: pointer;">
           </form>
           <span style="font-weight: 500;">{{ d.doc_type.name }}</span>
         </td>
@@ -100,9 +100,56 @@
           </div>
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="3" class="empty">No required documents for this cycle.</td></tr>
       {% endfor %}
+      
+      <!-- Quick Submission Row -->
+      {% set sub = cycle.latest_submission() %}
+      <tr>
+        <td>
+          <form method="post" action="{{ url_for('invoices.cycle_quick_submission', cycle_id=cycle.id) }}" id="toggle_form_sub" style="display:inline;">
+            <input type="hidden" name="completed" value="{{ '0' if sub else '1' }}">
+            <input type="checkbox" onchange="document.getElementById('toggle_form_sub').submit()" {{ 'checked' if sub else '' }} {{ 'disabled' if sub and current_user.role.name not in ('Admin', 'Manager') else '' }} style="margin-right: 12px; transform: scale(1.3); cursor: pointer;">
+          </form>
+          <span style="font-weight: 500;">Client Submission</span>
+        </td>
+        <td>
+          {% if sub %}
+          <span class="pill green">Submitted</span>
+          {% else %}
+          <span class="pill amber">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display: flex; gap: 12px;">
+            <a href="{{ url_for('submissions.new', cycle_id=cycle.id) }}" title="Manage Submission"><span style="font-size: 1.2rem;">👁</span></a>
+          </div>
+        </td>
+      </tr>
+      
+      <!-- Quick Payment Row -->
+      {% set pay = cycle.payments[-1] if cycle.payments else None %}
+      <tr>
+        <td>
+          <form method="post" action="{{ url_for('invoices.cycle_quick_payment', cycle_id=cycle.id) }}" id="toggle_form_pay" style="display:inline;">
+            <input type="hidden" name="completed" value="{{ '0' if pay else '1' }}">
+            <input type="checkbox" onchange="document.getElementById('toggle_form_pay').submit()" {{ 'checked' if pay else '' }} {{ 'disabled' if pay and current_user.role.name not in ('Admin', 'Manager') else '' }} style="margin-right: 12px; transform: scale(1.3); cursor: pointer;">
+          </form>
+          <span style="font-weight: 500;">Client Payment</span>
+        </td>
+        <td>
+          {% if pay %}
+          <span class="pill green">Paid</span>
+          {% else %}
+          <span class="pill amber">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display: flex; gap: 12px;">
+            <a href="{{ url_for('payments.new', cycle_id=cycle.id) }}" title="Manage Payment"><span style="font-size: 1.2rem;">👁</span></a>
+          </div>
+        </td>
+      </tr>
+      
     </table>
   </div>
 </div>
@@ -147,8 +194,29 @@ function toggleDoc(checkbox, docId, docCode) {
           </tr>
         {% endif %}
       {% endfor %}
+      
+      {% if not pending_found and not cycle.latest_submission() %}
+        {% set pending_found = true %}
+        <tr>
+          <td>Client Submission</td>
+          <td>Assigned Team</td>
+          <td><span class="pill amber">Pending</span></td>
+          <td>-</td>
+        </tr>
+      {% endif %}
+      
+      {% if not pending_found and not cycle.payments %}
+        {% set pending_found = true %}
+        <tr>
+          <td>Client Payment</td>
+          <td>Assigned Team</td>
+          <td><span class="pill amber">Pending</span></td>
+          <td>-</td>
+        </tr>
+      {% endif %}
+      
       {% if not pending_found %}
-      <tr><td colspan="4" class="empty">All document processing complete!</td></tr>
+      <tr><td colspan="4" class="empty">All processing complete!</td></tr>
       {% endif %}
     </table>
   </div>

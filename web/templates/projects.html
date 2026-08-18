@@ -16,9 +16,9 @@
       <tr>
         <th style="width: auto;">Project</th>
         <th style="width: 1%; white-space: normal;">Client</th>
-        <th style="width: 1%; white-space: normal;">Job code</th>
+        <th style="white-space: normal; min-width: 150px;">Job code</th>
         <th style="width: 1%; white-space: normal; min-width: 100px;">Submission method</th>
-        <th style="width: 1%; white-space: normal; min-width: 100px;">Required documents</th>
+        <th style="white-space: normal; min-width: 150px;">Required documents</th>
         <th style="width: 1%; white-space: normal;">Default team</th>
         <th style="width: 1%; white-space: normal;">Contract end</th>
         <th style="width: 1%; white-space: normal;">Active</th>
@@ -28,7 +28,7 @@
       <tr>
         <td class="strong"><a href="{{ url_for('masters.project_detail', project_id=p.id) }}">{{ p.name }}</a></td>
         <td><a href="#">{{ p.client.name }}</a></td>
-        <td class="mono">{{ p.job_code or '—' }}</td>
+        <td class="mono">{{ p.job_code.replace(',', ', ') if p.job_code else '—' }}</td>
         <td><span class="pill teal">{{ p.submission_method.name }}</span></td>
         <td>
           {% for r in p.requirements %}<span class="pill blue">{{ r.doc_type.code }}</span> {% endfor %}

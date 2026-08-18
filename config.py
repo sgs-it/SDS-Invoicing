@@ -23,11 +23,20 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get("SUPABASE_DB_URI") or "sqlite:///" + DB_PATH
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Only use sqlite-specific connect args if using sqlite
     if SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
         SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"check_same_thread": False}}
     else:
-        SQLALCHEMY_ENGINE_OPTIONS = {}
+        if os.environ.get("VERCEL") == "1":
+            # In Vercel serverless, internal pooling causes issues. Rely on Supabase pooler.
+            from sqlalchemy.pool import NullPool
+            SQLALCHEMY_ENGINE_OPTIONS = {"poolclass": NullPool}
+        else:
+            # Locally, use SQLAlchemy's built-in QueuePool for massive speedup
+            SQLALCHEMY_ENGINE_OPTIONS = {
+                "pool_size": 10,
+                "pool_recycle": 1800,  # recycle connections after 30 minutes
+                "pool_pre_ping": True  # check if connection is alive before using
+            }
 
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")

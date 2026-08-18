@@ -356,6 +356,7 @@ def document_remove_attachment(doc_id):
 @bp.route("/documents/<int:doc_id>/quick-toggle", methods=["POST"])
 @login_required
 def document_quick_toggle(doc_id):
+    from web.models import Notification
     doc = db.get_or_404(CycleDocument, doc_id)
     cycle = doc.cycle
     
@@ -371,9 +372,22 @@ def document_quick_toggle(doc_id):
             cycle.invoice_number = invoice_number
         action = "Quick marked as completed"
     else:
+        if doc.is_completed() and current_user.role.name not in ("Admin", "Manager"):
+            flash("You do not have permission to uncheck a completed document.", "danger")
+            return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+            
         doc.status_code = "PREPARING"
         doc.completed_at = None
         action = "Quick marked as pending"
+        
+        notify_user_id = doc.employee_id if doc.employee_id else None
+        if notify_user_id and notify_user_id != current_user.id:
+            db.session.add(Notification(
+                user_id=notify_user_id,
+                title="Document Re-opened",
+                message=f"Your completed document '{doc.doc_type.name}' in cycle '{cycle.cycle_name}' was marked as pending by {current_user.username}.",
+                ntype="SYSTEM"
+            ))
         
     db.session.add(DocumentHistory(
         cycle_document_id=doc.id, user_id=current_user.id,
@@ -385,6 +399,88 @@ def document_quick_toggle(doc_id):
     db.session.commit()
     
     flash(f"{doc.doc_type.name} updated.", "success")
+    return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+
+
+@bp.route("/invoices/<int:cycle_id>/quick-submission", methods=["POST"])
+@login_required
+def cycle_quick_submission(cycle_id):
+    from web.models import Notification
+    cycle = db.get_or_404(InvoiceCycle, cycle_id)
+    completed = request.form.get("completed") == "1"
+    
+    existing = cycle.latest_submission()
+    
+    if completed:
+        if not existing:
+            sub = Submission(
+                invoice_cycle_id=cycle.id,
+                submission_method_id=cycle.project.submission_method_id,
+                submission_date=datetime.utcnow().date(),
+                submitted_by_id=current_user.id,
+                status="SUBMITTED"
+            )
+            db.session.add(sub)
+            audit(current_user, f"Quick submitted cycle {cycle.cycle_name}", "Submission", cycle.id)
+            flash("Submission recorded.", "success")
+    else:
+        if existing:
+            if current_user.role.name not in ("Admin", "Manager"):
+                flash("You do not have permission to uncheck the submission.", "danger")
+                return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+                
+            db.session.delete(existing)
+            audit(current_user, f"Quick removed submission for {cycle.cycle_name}", "Submission", cycle.id)
+            flash("Submission removed.", "info")
+            
+            if existing.submitted_by_id and existing.submitted_by_id != current_user.id:
+                db.session.add(Notification(
+                    user_id=existing.submitted_by_id,
+                    title="Submission Removed",
+                    message=f"The submission you recorded for '{cycle.cycle_name}' was removed by {current_user.username}.",
+                    ntype="SYSTEM"
+                ))
+            
+    db.session.commit()
+    recompute_cycle(cycle)
+    db.session.commit()
+    return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+
+
+@bp.route("/invoices/<int:cycle_id>/quick-payment", methods=["POST"])
+@login_required
+def cycle_quick_payment(cycle_id):
+    from web.models import Notification
+    cycle = db.get_or_404(InvoiceCycle, cycle_id)
+    completed = request.form.get("completed") == "1"
+    
+    existing = cycle.payments[-1] if cycle.payments else None
+    
+    if completed:
+        if not existing:
+            pay = Payment(
+                invoice_cycle_id=cycle.id,
+                invoice_amount=cycle.invoice_amount,
+                actual_payment_date=datetime.utcnow().date(),
+                outstanding_amount=0,
+                payment_status="PAID"
+            )
+            db.session.add(pay)
+            audit(current_user, f"Quick paid cycle {cycle.cycle_name}", "Payment", cycle.id)
+            flash("Payment recorded.", "success")
+    else:
+        if existing:
+            if current_user.role.name not in ("Admin", "Manager"):
+                flash("You do not have permission to uncheck the payment.", "danger")
+                return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
+                
+            db.session.delete(existing)
+            audit(current_user, f"Quick removed payment for {cycle.cycle_name}", "Payment", cycle.id)
+            flash("Payment removed.", "info")
+            
+    db.session.commit()
+    recompute_cycle(cycle)
+    db.session.commit()
     return redirect(url_for("invoices.cycle_detail", cycle_id=cycle.id))
 
 
