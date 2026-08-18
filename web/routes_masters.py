@@ -34,16 +34,44 @@ def _flash_success(message):
 @role_required("Admin", "Manager")
 def projects():
     from datetime import date
+    from flask import request
     from sqlalchemy.orm import joinedload
-    rows = (Project.query.options(
+    from sqlalchemy import or_, extract
+    
+    search = request.args.get("search", "").strip()
+    month = request.args.get("month", "").strip()
+
+    q = (Project.query.options(
                 joinedload(Project.client),
                 joinedload(Project.submission_method),
                 joinedload(Project.requirements).joinedload(ProjectDocumentRequirement.doc_type)
             )
-            .join(Client)
-            .order_by(Client.name, Project.name).all())
-    return render_template("projects.html", projects=rows,
-                           today=date.today())
+            .join(Client))
+            
+    if search:
+        q = q.filter(
+            or_(
+                Project.name.ilike(f"%{search}%"),
+                Project.job_code.ilike(f"%{search}%"),
+                Client.name.ilike(f"%{search}%")
+            )
+        )
+        
+    if month:
+        try:
+            y, m = month.split("-")
+            q = q.filter(
+                or_(
+                    (extract('year', Project.contract_end) == int(y)) & (extract('month', Project.contract_end) == int(m)),
+                    (extract('year', Project.contract_start) == int(y)) & (extract('month', Project.contract_start) == int(m))
+                )
+            )
+        except ValueError:
+            pass
+
+    rows = q.order_by(Client.name, Project.name).all()
+    
+    return render_template("projects.html", projects=rows, today=date.today(), search=search, month=month)
 
 
 @bp.route("/projects/<int:project_id>")
