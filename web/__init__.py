@@ -72,7 +72,7 @@ def create_app(config=Config):
     def inject_globals():
         from flask_login import current_user
         from web.models import Notification
-        from web.workflow import get_setting, user_can_prepare, user_can_approve
+        from web.workflow import get_setting, user_can_prepare, user_can_approve, get_visible_documents, get_assigned_user_names
         currency = get_setting("currency", "AED")
         unread = 0
         if current_user.is_authenticated:
@@ -81,7 +81,9 @@ def create_app(config=Config):
         return {"CURRENCY": currency, "APP_NAME": "SDS Invoicing Tracker",
                 "unread_count": unread, 
                 "user_can_prepare": user_can_prepare, 
-                "user_can_approve": user_can_approve}
+                "user_can_approve": user_can_approve,
+                "get_visible_documents": get_visible_documents,
+                "get_assigned_user_names": get_assigned_user_names}
 
     with app.app_context():
         db.create_all()

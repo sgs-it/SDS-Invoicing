@@ -72,14 +72,9 @@
         {% if can_prepare %}
         <form method="post" action="{{ url_for('invoices.document_edit', doc_id=doc.id) }}">
           <div class="form-grid">
-            <div class="form-group"><label>Department</label>
-              <select name="department_id"><option value="">— None —</option>
-                {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if doc.department_id == d.id }}>{{ d.code }} — {{ d.name }}</option>{% endfor %}
-              </select></div>
-            <div class="form-group"><label>Responsible employee</label>
-              <select name="employee_id"><option value="">— None —</option>
-                {% for e in employees %}<option value="{{ e.id }}" {{ 'selected' if doc.employee_id == e.id }}>{{ e.name }}{% if e.department %} ({{ e.department.code }}){% endif %}</option>{% endfor %}
-              </select></div>
+            <div class="form-group" style="grid-column: 1 / -1;"><label>Assigned Users (via Permissions)</label>
+              <div style="padding-top: 8px; font-weight: 600;">{{ get_assigned_user_names(doc.doc_type_id) }}</div>
+            </div>
             <div class="form-group"><label>Preparation date</label>
               <input type="date" name="preparation_date" value="{{ doc.preparation_date.isoformat() if doc.preparation_date }}"></div>
             <div class="form-group"><label>Due date</label>
@@ -91,10 +86,8 @@
         </form>
         {% else %}
         <div class="form-grid">
-          <div class="form-group"><label>Department</label>
-            <div>{{ doc.department.name if doc.department else '— None —' }}</div></div>
-          <div class="form-group"><label>Responsible employee</label>
-            <div>{{ doc.employee.name if doc.employee else '— None —' }}</div></div>
+          <div class="form-group" style="grid-column: 1 / -1;"><label>Assigned Users (via Permissions)</label>
+            <div>{{ get_assigned_user_names(doc.doc_type_id) }}</div></div>
           <div class="form-group"><label>Preparation date</label>
             <div>{{ doc.preparation_date.strftime('%d %b %Y') if doc.preparation_date else '— None —' }}</div></div>
           <div class="form-group"><label>Due date</label>

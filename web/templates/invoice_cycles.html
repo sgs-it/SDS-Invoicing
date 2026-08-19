@@ -57,10 +57,11 @@
         <td class="mono">{{ c.invoice_number or '—' }}</td>
         <td>{% if c.invoice_amount %}{{ CURRENCY }} {{ "{:,.0f}".format(c.invoice_amount) }}{% else %}—{% endif %}</td>
         <td class="small">
+          {% set vdocs = get_visible_documents(c.documents) %}
           {% set ns = namespace(done=0) %}
-          {% for d in c.documents %}{% if d.is_completed() %}{% set ns.done = ns.done + 1 %}{% endif %}{% endfor %}
-          {{ ns.done }}/{{ c.documents|length }}
-          <div class="progress mt0"><i style="width:{{ (ns.done * 100 / c.documents|length)|round|int if c.documents else 0 }}%"></i></div>
+          {% for d in vdocs %}{% if d.is_completed() %}{% set ns.done = ns.done + 1 %}{% endif %}{% endfor %}
+          {{ ns.done }}/{{ vdocs|length }}
+          <div class="progress mt0"><i style="width:{{ (ns.done * 100 / vdocs|length)|round|int if vdocs else 0 }}%"></i></div>
         </td>
         <td><span class="pill {{ CYCLE_CSS(c.status_code) }}">{{ CYCLE_STATUS(c.status_code) }}</span></td>
         <td class="small">{{ (c.next_action_text or '—')[:46] }}</td>

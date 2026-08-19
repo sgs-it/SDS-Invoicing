@@ -184,11 +184,8 @@ def audit(user, action, entity_type, entity_id, details=""):
 
 def notify_assignee(doc, title, message, ntype="STATUS"):
     """Notify the user attached to a document's employee, if any."""
-    if not doc.employee:
-        return
-    user = User.query.filter_by(employee_id=doc.employee.id, active=True).first()
-    if user:
-        notify(user.id, title, message, ntype)
+    for u in _responsible_users(doc):
+        notify(u.id, title, message, ntype)
 
 
 # --------------------------------------------------------------------------- #
@@ -212,6 +209,40 @@ def user_can_approve(user, doc_type_id):
     p = UserDocumentPermission.query.filter_by(
         user_id=user.id, doc_type_id=doc_type_id).first()
     return bool(p and p.can_approve)
+
+
+def get_visible_documents(docs, user=None):
+    """Return only documents the user is allowed to see."""
+    if user is None:
+        from flask_login import current_user
+        if not current_user or not current_user.is_authenticated:
+            return []
+        user = current_user
+        
+    if user.role in ("Admin", "Manager"):
+        return list(docs)
+        
+    visible = []
+    # Pre-fetch permissions for performance if not Admin/Manager
+    from web.models import UserDocumentPermission
+    perms = UserDocumentPermission.query.filter_by(user_id=user.id).all()
+    allowed_doc_types = {p.doc_type_id for p in perms if p.can_prepare or p.can_approve}
+    
+    for d in docs:
+        if d.doc_type_id in allowed_doc_types:
+            visible.append(d)
+    return visible
+
+def get_assigned_user_names(doc_type_id):
+    from web.models import UserDocumentPermission, User
+    perms = UserDocumentPermission.query.filter_by(doc_type_id=doc_type_id).all()
+    user_ids = [p.user_id for p in perms if p.can_prepare or p.can_approve]
+    if not user_ids:
+        return "Unassigned"
+    users = User.query.filter(User.id.in_(user_ids), User.active == True).all()
+    if not users:
+        return "Unassigned"
+    return ", ".join(u.name for u in users)
 
 
 # --------------------------------------------------------------------------- #
@@ -504,8 +535,7 @@ def find_bottleneck(cycle):
         desc = f"Not started: {doc.doc_type.name} not yet prepared"
     elif doc.status_code in ("PREPARING", "INTERNAL_REVIEW", "VERIFIED",
                              "READY", "ADDED_INVOICE", "RECEIVED"):
-        owner = doc.employee.name if doc.employee else \
-            (doc.department.name if doc.department else "team")
+        owner = get_assigned_user_names(doc.doc_type_id)
         if doc.due_date and doc.due_date < date.today():
             desc = (f"Overdue: {doc.doc_type.name} ({owner}) — "
                     f"due {doc.due_date:%d %b %Y}")
@@ -893,19 +923,12 @@ def scheduled_sweep(today=None):
 
 
 def _responsible_users(doc):
-    users = []
-    if doc.employee:
-        u = User.query.filter_by(employee_id=doc.employee.id, active=True).first()
-        if u:
-            users.append(u)
-    if doc.department:
-        dept_users = (User.query.join(User.employee)
-                      .filter_by(department_id=doc.department.id, active=True)
-                      .all())
-        for u in dept_users:
-            if u not in users:
-                users.append(u)
-    return users
+    from web.models import UserDocumentPermission, User
+    perms = UserDocumentPermission.query.filter_by(doc_type_id=doc.doc_type_id).all()
+    user_ids = [p.user_id for p in perms if p.can_prepare or p.can_approve]
+    if not user_ids:
+        return []
+    return User.query.filter(User.id.in_(user_ids), User.active == True).all()
 
 
 def _doc_due_msg(doc):

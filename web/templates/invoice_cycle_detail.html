@@ -80,7 +80,7 @@
         <th style="width: 150px;">Status</th>
         <th style="width: 120px;">Actions</th>
       </tr>
-      {% for d in cycle.documents %}
+      {% for d in get_visible_documents(cycle.documents) %}
       <tr>
         <td>
           <form method="post" action="{{ url_for('invoices.document_quick_toggle', doc_id=d.id) }}" id="toggle_form_{{ d.id }}" style="display:inline;">
@@ -189,12 +189,12 @@ function toggleDoc(checkbox, docId, docCode) {
         <th>Waiting On</th>
       </tr>
       {% set pending_found = false %}
-      {% for d in cycle.documents %}
+      {% for d in get_visible_documents(cycle.documents) %}
         {% if not d.is_completed() and not pending_found %}
           {% set pending_found = true %}
           <tr>
             <td>Process {{ d.doc_type.name }}</td>
-            <td>{{ d.employee.name if d.employee else d.department.name if d.department else 'Assigned Team' }}</td>
+            <td>{{ get_assigned_user_names(d.doc_type_id) }}</td>
             <td><span class="pill amber">Pending</span></td>
             <td>{{ d.waiting_for or '-' }}</td>
           </tr>

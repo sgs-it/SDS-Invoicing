@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from web import db
 from web.models import (
@@ -45,8 +45,8 @@ def _filtered_cycles(f):
     """Invoice cycles matching the dashboard filters."""
     q = (InvoiceCycle.query
          .options(
-             joinedload(InvoiceCycle.documents).joinedload(CycleDocument.doc_type),
-             joinedload(InvoiceCycle.payments),
+             selectinload(InvoiceCycle.documents).joinedload(CycleDocument.doc_type),
+             selectinload(InvoiceCycle.payments),
              joinedload(InvoiceCycle.project).joinedload(Project.client),
              joinedload(InvoiceCycle.project).joinedload(Project.submission_method)
          )
@@ -86,7 +86,15 @@ def home():
         "method_id": request.args.get("method_id", type=int),
         "status": request.args.get("status", "") or "",
     }
-    cycles = _filtered_cycles(f)
+    raw_cycles = _filtered_cycles(f)
+    
+    # Filter cycles by visible documents for non-Admin/Manager
+    cycles = []
+    from web.workflow import get_visible_documents
+    for c in raw_cycles:
+        c.visible_docs = get_visible_documents(c.documents, current_user)
+        if current_user.role in ("Admin", "Manager") or c.visible_docs:
+            cycles.append(c)
 
     if request.args.get('export') == '1':
         import csv
@@ -98,8 +106,8 @@ def home():
         writer.writerow(['Cycle Name', 'Project', 'Month', 'Invoice Number', 'Amount', 'Docs Completed', 'Docs Total', 'Status', 'Next Action'])
         
         for c in cycles:
-            c_completed = sum(1 for d in c.documents if d.is_completed())
-            c_total = len(c.documents)
+            c_completed = sum(1 for d in c.visible_docs if d.is_completed())
+            c_total = len(c.visible_docs)
             status_label = CYCLE_STATUS_LABELS.get(c.status_code, c.status_code)
             
             writer.writerow([
@@ -131,7 +139,7 @@ def home():
     agg = {"total": 0, "completed": 0, "waiting_client": 0,
            "internal": 0, "not_started": 0, "overdue_docs": 0}
     for c in cycles:
-        for d in c.documents:
+        for d in c.visible_docs:
             agg["total"] += 1
             agg[_active_buckets(d)] += 1
             if d.due_date and d.due_date < date.today() and not d.is_completed():

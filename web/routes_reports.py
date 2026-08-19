@@ -34,6 +34,7 @@ from web.models import (
     SUBMISSION_STATUSES,
 )
 from web.workflow import (
+    get_assigned_user_names,
     DOC_STATUS_LABELS,
     compute_cycle_counts,
     cycle_status_css,
@@ -226,12 +227,11 @@ def document_pending_csv():
     for d in _document_pending_rows(f):
         out.append([d.cycle.cycle_name, d.cycle.project.client.name,
                     d.cycle.project.name, d.doc_type.name, d.status_code,
-                    d.department.code if d.department else "",
-                    d.employee.name if d.employee else "",
+                    get_assigned_user_names(d.doc_type_id),
                     d.due_date, d.waiting_for, d.attachment_path or ""])
     return _send_csv("document-pending", "document-pending", out,
                      ["Cycle", "Client", "Project", "Document", "Status",
-                      "Department", "Employee", "Due Date", "Waiting For",
+                      "Assigned Users", "Due Date", "Waiting For",
                       "Attachment"])
 
 

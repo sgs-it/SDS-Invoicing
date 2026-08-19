@@ -1,9 +1,8 @@
 """Master data management: clients, projects, departments, employees,
 document types, submission methods and workflow templates.
-Admin + Manager only.
 """
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-
+from flask_login import login_required, current_user
 from web import db
 from web.auth import role_required
 from web.models import (
@@ -31,22 +30,41 @@ def _flash_success(message):
 # Projects
 # =========================================================================== #
 @bp.route("/projects")
-@role_required("Admin", "Manager")
+@login_required
 def projects():
     from datetime import date
     from flask import request
-    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import joinedload, selectinload
     from sqlalchemy import or_, extract
     
     search = request.args.get("search", "").strip()
-    month = request.args.get("month", "").strip()
+    from_date = request.args.get("from_date", "").strip()
+    to_date = request.args.get("to_date", "").strip()
 
     q = (Project.query.options(
                 joinedload(Project.client),
                 joinedload(Project.submission_method),
-                joinedload(Project.requirements).joinedload(ProjectDocumentRequirement.doc_type)
+                selectinload(Project.requirements).joinedload(ProjectDocumentRequirement.doc_type)
             )
             .join(Client))
+            
+    if current_user.role not in ("Admin", "Manager"):
+        from web.models import ProjectDocumentRequirement
+        
+        user_doc_type_ids = [
+            p.doc_type_id for p in current_user.permissions 
+            if p.can_prepare or p.can_approve
+        ]
+        
+        if user_doc_type_ids:
+            has_doc = (ProjectDocumentRequirement.query
+                       .filter(ProjectDocumentRequirement.project_id == Project.id)
+                       .filter(ProjectDocumentRequirement.doc_type_id.in_(user_doc_type_ids))
+                       .exists())
+            q = q.filter(has_doc)
+        else:
+            q = q.filter(db.false())
+
             
     if search:
         q = q.filter(
@@ -57,25 +75,19 @@ def projects():
             )
         )
         
-    if month:
-        try:
-            y, m = month.split("-")
-            q = q.filter(
-                or_(
-                    (extract('year', Project.contract_end) == int(y)) & (extract('month', Project.contract_end) == int(m)),
-                    (extract('year', Project.contract_start) == int(y)) & (extract('month', Project.contract_start) == int(m))
-                )
-            )
-        except ValueError:
-            pass
+    if from_date:
+        q = q.filter(or_(Project.contract_end >= from_date, Project.contract_end.is_(None)))
+    
+    if to_date:
+        q = q.filter(Project.contract_start <= to_date)
 
     rows = q.order_by(Client.name, Project.name).all()
     
-    return render_template("projects.html", projects=rows, today=date.today(), search=search, month=month)
+    return render_template("projects.html", projects=rows, today=date.today(), search=search, from_date=from_date, to_date=to_date)
 
 
 @bp.route("/projects/<int:project_id>")
-@role_required("Admin", "Manager")
+@login_required
 def project_detail(project_id):
     project = db.get_or_404(Project, project_id)
     from web.workflow import cycle_status_css, cycle_status_label

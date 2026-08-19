@@ -118,10 +118,10 @@ document.addEventListener("DOMContentLoaded", function() {
   </div>
 
   {% for c in cycles %}
-  {% set total_docs = c.documents|length %}
-  {% set comp_docs = c.documents|selectattr("status_code", "equalto", "COMPLETED")|list|length %}
+  {% set total_docs = c.visible_docs|length %}
+  {% set comp_docs = c.visible_docs|selectattr("status_code", "equalto", "COMPLETED")|list|length %}
   {% set prog_pct = (comp_docs / total_docs * 100)|round|int if total_docs else 0 %}
-  {% set next_doc = c.documents|rejectattr("status_code", "equalto", "COMPLETED")|first %}
+  {% set next_doc = c.visible_docs|rejectattr("status_code", "equalto", "COMPLETED")|first %}
   <a href="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}" class="long-card-3d tilt-card" style="text-decoration: none; color: inherit;">
     <div class="card-top-accent"></div>
     <div class="project-name-cell">

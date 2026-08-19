@@ -47,7 +47,7 @@
           <th style="width: 150px;">Status</th>
           <th style="width: 120px;">Actions</th>
         </tr>
-        {% for d in cycle.documents %}
+        {% for d in get_visible_documents(cycle.documents) %}
         <tr>
           <td>
             <form method="post" action="{{ url_for('invoices.document_quick_toggle', doc_id=d.id) }}" id="toggle_form_{{ d.id }}" style="display:inline;">

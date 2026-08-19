@@ -15,10 +15,14 @@
     <input type="text" id="projectSearch" name="search" value="{{ search }}" placeholder="Search by project, client, or job code..." style="width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
   </div>
   <div style="display: flex; gap: 8px; align-items: center;">
-    <label style="font-size: 13px; color: var(--text-muted); margin-right: 4px;">Contract Period:</label>
-    <input type="month" name="month" value="{{ month }}" onchange="this.form.submit()" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;" title="Filter by Month/Year">
+    <label style="font-size: 13px; color: var(--text-muted); margin-right: 4px;">From:</label>
+    <input type="date" name="from_date" value="{{ from_date }}" onchange="this.form.submit()" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
   </div>
-  {% if search or month %}
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <label style="font-size: 13px; color: var(--text-muted); margin-right: 4px;">To:</label>
+    <input type="date" name="to_date" value="{{ to_date }}" onchange="this.form.submit()" style="padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px;">
+  </div>
+  {% if search or from_date or to_date %}
   <a class="btn ghost" href="{{ url_for('masters.projects') }}">Clear</a>
   {% endif %}
   <button type="submit" style="display: none;">Search</button>
@@ -27,14 +31,14 @@
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   const searchInput = document.getElementById("projectSearch");
-  const cards = document.querySelectorAll(".grid2 > .card");
+  const cards = document.querySelectorAll(".long-card-3d.tilt-card");
   
   searchInput.addEventListener("input", function() {
     const query = this.value.toLowerCase();
     cards.forEach(card => {
       const text = card.textContent.toLowerCase();
       if (text.includes(query)) {
-        card.style.display = "block";
+        card.style.display = "grid";
       } else {
         card.style.display = "none";
       }
@@ -43,59 +47,59 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-<div class="grid2">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+  <div class="long-card-3d long-card-header" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1.5fr 120px;">
+    <div>PROJECT & CLIENT</div>
+    <div>METHOD</div>
+    <div>JOB CODE</div>
+    <div>CONTRACT END</div>
+    <div>REQUIRED DOCS</div>
+    <div>ACTIONS</div>
+  </div>
+
   {% for p in projects %}
-  <div class="card tilt-card" style="padding: 20px; position: relative;">
-    <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start;">
-      <div>
-        <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">
-          <a href="{{ url_for('masters.project_detail', project_id=p.id) }}" style="color: var(--primary);">{{ p.name }}</a>
-        </div>
-        <div style="font-size: 13px; color: var(--muted);">Client: <span style="color: var(--text); font-weight: 600;">{{ p.client.name }}</span></div>
-      </div>
-      <div>
-        {% if p.active %}<span class="pill green">Active</span>{% else %}<span class="pill red">Inactive</span>{% endif %}
-      </div>
+  <div class="long-card-3d tilt-card" style="grid-template-columns: 2fr 1.2fr 1fr 1fr 1.5fr 120px; position: relative;">
+    <div class="card-top-accent" style="background: var(--primary);"></div>
+    <div class="project-name-cell">
+      <a href="{{ url_for('masters.project_detail', project_id=p.id) }}" style="color: var(--primary); text-decoration: none; font-weight: 600;">{{ p.name }}</a>
+      <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">{{ p.client.name }}</div>
     </div>
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-bottom: 16px;">
-      <div>
-        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Job Code</div>
-        <div class="mono" style="font-weight: 600;">{{ p.job_code.replace(',', ', ') if p.job_code else '—' }}</div>
-      </div>
-      <div>
-        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Default Team</div>
-        <div style="font-weight: 600;">{{ p.default_team_code or '—' }}</div>
-      </div>
-      <div>
-        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Method</div>
-        <div><span class="pill teal">{{ p.submission_method.name }}</span></div>
-      </div>
-      <div>
-        <div style="color: var(--muted); font-size: 11px; text-transform: uppercase;">Contract End</div>
-        <div style="font-weight: 600;">
-          {% if p.contract_end %}
-            {{ p.contract_end.strftime('%d %b %Y') }}
-            {% if p.contract_end < today %}<span class="pill red">expired</span>{% endif %}
-          {% else %}<span class="muted">ongoing</span>{% endif %}
-        </div>
-      </div>
+    <div>
+      <span class="method-pill method-online"><span class="method-dot"></span> {{ p.submission_method.name }}</span>
     </div>
     
-    <div style="margin-bottom: 16px;">
-      <div style="color: var(--muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Required Documents</div>
-      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-        {% for r in p.requirements %}<span class="pill blue">{{ r.doc_type.code }}</span>{% endfor %}
-      </div>
+    <div class="mono" style="font-size: 0.85rem; color: var(--muted);">
+      {{ p.job_code.replace(',', ', ') if p.job_code else '—' }}
     </div>
     
-    <div style="border-top: 1px solid var(--border); padding-top: 16px; display: flex; gap: 10px;">
-      <a class="btn outline sm" style="flex: 1; justify-content: center;" href="{{ url_for('masters.project_edit', project_id=p.id) }}">Edit</a>
-      <a class="btn ghost sm" style="flex: 1; justify-content: center;" href="{{ url_for('masters.project_toggle', project_id=p.id) }}">{{ 'Deactivate' if p.active else 'Activate' }}</a>
+    <div style="font-size: 0.9rem;">
+      {% if p.contract_end %}
+        {{ p.contract_end.strftime('%d %b %Y') }}
+        {% if p.contract_end < today %}<br><span class="pill red mt0">expired</span>{% endif %}
+      {% else %}<span class="muted">ongoing</span>{% endif %}
+    </div>
+    
+    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+      {% for r in p.requirements %}<span class="pill blue" style="font-size: 10px; padding: 2px 6px;">{{ r.doc_type.code }}</span>{% endfor %}
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      {% if p.active %}
+        <span class="pill green" style="align-self: flex-start; margin-bottom: 4px;">Active</span>
+      {% else %}
+        <span class="pill red" style="align-self: flex-start; margin-bottom: 4px;">Inactive</span>
+      {% endif %}
+      {% if current_user.role in ("Admin", "Manager") %}
+      <div style="display: flex; gap: 4px;">
+        <a class="btn outline sm" style="text-align: center; font-size: 11px; padding: 4px 8px; flex: 1;" href="{{ url_for('masters.project_edit', project_id=p.id) }}">Edit</a>
+        <a class="btn ghost sm" style="text-align: center; font-size: 11px; padding: 4px 8px; flex: 1;" href="{{ url_for('masters.project_toggle', project_id=p.id) }}">{{ 'Deactivate' if p.active else 'Activate' }}</a>
+      </div>
+      {% endif %}
     </div>
   </div>
   {% else %}
-  <div class="empty" style="grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--muted);">No projects yet. Run the Excel migration or add one.</div>
+  <div class="empty" style="padding: 40px; text-align: center; color: var(--muted);">No projects yet.</div>
   {% endfor %}
 </div>
 {% endblock %}
