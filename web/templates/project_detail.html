@@ -15,7 +15,14 @@
       → <b>{{ project.contract_end.strftime('%d %b %Y') if project.contract_end else 'No end date (ongoing)' }}</b>
     </div>
   </div>
-  <div class="toolbar">
+  <div class="toolbar" style="align-items: center;">
+    <select onchange="if(this.value) window.location.href=this.value;" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; margin-right: 8px;">
+      <option value="">-- Select Cycle --</option>
+      <option value="{{ url_for('invoices.project_cycles_all', project_id=project.id) }}">All Months (Stacked)</option>
+      {% for c in project.cycles|sort(attribute='invoice_month', reverse=True) %}
+      <option value="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}">{{ c.invoice_month }}</option>
+      {% endfor %}
+    </select>
     <a class="btn outline" href="{{ url_for('masters.project_renew', project_id=project.id) }}">Renew contract</a>
     <a class="btn outline" href="{{ url_for('masters.project_edit', project_id=project.id) }}">Edit project</a>
     <form method="post" action="{{ url_for('masters.project_delete', project_id=project.id) }}"

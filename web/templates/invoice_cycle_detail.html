@@ -14,7 +14,13 @@
       · Method <span class="pill teal">{{ cycle.project.submission_method.name }}</span>
     </div>
   </div>
-  <div class="toolbar">
+  <div class="toolbar" style="align-items: center;">
+    <select onchange="if(this.value) window.location.href=this.value;" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 14px; margin-right: 8px;">
+      <option value="{{ url_for('invoices.project_cycles_all', project_id=cycle.project_id) }}">All Months</option>
+      {% for c in all_cycles %}
+      <option value="{{ url_for('invoices.cycle_detail', cycle_id=c.id) }}" {% if c.id == cycle.id %}selected{% endif %}>{{ c.invoice_month }}</option>
+      {% endfor %}
+    </select>
     <span class="pill {{ CYCLE_CSS(cycle.status_code) }}" style="font-size:13px; padding:5px 14px;">{{ CYCLE_STATUS(cycle.status_code) }}</span>
     {% if current_user.role in ('Admin', 'Manager') %}
     <form method="post" action="{{ url_for('invoices.cycle_delete', cycle_id=cycle.id) }}"

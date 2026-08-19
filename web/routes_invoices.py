@@ -225,12 +225,31 @@ def cycle_detail(cycle_id):
     # latest submission + payment for the action links
     submission = cycle.latest_submission()
     payment = cycle.payments[-1] if cycle.payments else None
+    # Get all cycles for dropdown
+    all_cycles = InvoiceCycle.query.filter_by(project_id=cycle.project_id).order_by(InvoiceCycle.invoice_month.desc()).all()
+    
     return render_template(
         "invoice_cycle_detail.html", cycle=cycle, counts=counts,
         bottleneck=bottleneck, stages=stages, CYCLE_CSS=css,
         CYCLE_STATUS=label, DOC_CSS=doc_css, DOC_STATUS=doc_label,
         departments=departments, employees=employees,
         submission=submission, payment=payment, today=date.today(),
+        all_cycles=all_cycles
+    )
+
+
+@bp.route("/projects/<int:project_id>/cycles/all")
+@login_required
+def project_cycles_all(project_id):
+    project = db.get_or_404(Project, project_id)
+    all_cycles = InvoiceCycle.query.filter_by(project_id=project_id).order_by(InvoiceCycle.invoice_month.desc()).all()
+    
+    css, label = _cycle_status_helpers()
+    
+    return render_template(
+        "project_cycles_all.html", project=project, all_cycles=all_cycles,
+        CYCLE_CSS=css, CYCLE_STATUS=label, DOC_CSS=doc_status_css, DOC_STATUS=doc_status_label,
+        today=date.today()
     )
 
 

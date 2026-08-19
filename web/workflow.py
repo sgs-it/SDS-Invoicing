@@ -361,26 +361,51 @@ def create_invoice_cycle(project, invoice_month, user,
 
 
 def create_cycle_documents(cycle):
-    """Auto-generate one CycleDocument per project requirement."""
-    for req in cycle.project.requirements:
-        step = None
-        tpl = doc_template(req.doc_type_id)
-        if tpl and tpl.steps:
-            step = tpl.steps[0]
-        doc = CycleDocument(
-            invoice_cycle_id=cycle.id,
-            doc_type_id=req.doc_type_id,
-            sequence=req.sequence,
-            current_step_id=step.id if step else None,
-            status_code=step.status_code if step else "NOT_STARTED",
-            department_id=cycle.project.default_team_code and _dept_by_code(
-                cycle.project.default_team_code),
-            due_date=cycle.target_submit_date,
-            waiting_for=None,
-            approval_status="NONE",
-            submission_status="NONE",
-        )
-        db.session.add(doc)
+    """Auto-generate CycleDocument based on the most recent cycle, or fallback to project requirements."""
+    last_cycle = InvoiceCycle.query.filter(
+        InvoiceCycle.project_id == cycle.project_id,
+        InvoiceCycle.id != cycle.id
+    ).order_by(InvoiceCycle.invoice_month.desc()).first()
+
+    if last_cycle and last_cycle.documents:
+        for old_doc in last_cycle.documents:
+            step = None
+            tpl = doc_template(old_doc.doc_type_id)
+            if tpl and tpl.steps:
+                step = tpl.steps[0]
+            doc = CycleDocument(
+                invoice_cycle_id=cycle.id,
+                doc_type_id=old_doc.doc_type_id,
+                sequence=old_doc.sequence,
+                current_step_id=step.id if step else None,
+                status_code=step.status_code if step else "NOT_STARTED",
+                department_id=old_doc.department_id,
+                due_date=cycle.target_submit_date,
+                waiting_for=None,
+                approval_status="NONE",
+                submission_status="NONE",
+            )
+            db.session.add(doc)
+    else:
+        for req in cycle.project.requirements:
+            step = None
+            tpl = doc_template(req.doc_type_id)
+            if tpl and tpl.steps:
+                step = tpl.steps[0]
+            doc = CycleDocument(
+                invoice_cycle_id=cycle.id,
+                doc_type_id=req.doc_type_id,
+                sequence=req.sequence,
+                current_step_id=step.id if step else None,
+                status_code=step.status_code if step else "NOT_STARTED",
+                department_id=cycle.project.default_team_code and _dept_by_code(
+                    cycle.project.default_team_code),
+                due_date=cycle.target_submit_date,
+                waiting_for=None,
+                approval_status="NONE",
+                submission_status="NONE",
+            )
+            db.session.add(doc)
     db.session.flush()
 
 
@@ -829,6 +854,38 @@ def scheduled_sweep(today=None):
                            f"Payment {pay.payment_due_date} due for "
                            f"{pay.cycle.cycle_name}.", "REMINDER")
                     created += 1
+
+    # --- automatic cycle generation (end of month) ---
+    import calendar
+    from web.models import Project, InvoiceCycle
+    last_day = calendar.monthrange(today.year, today.month)[1]
+    
+    if today.day == last_day:
+        # Determine next month
+        if today.month == 12:
+            next_month_str = f"{today.year + 1}-01"
+            next_month_date = date(today.year + 1, 1, 1)
+        else:
+            next_month_str = f"{today.year}-{today.month + 1:02d}"
+            next_month_date = date(today.year, today.month + 1, 1)
+            
+        # For all active projects
+        for p in Project.query.filter_by(active=True).all():
+            # Check contract expiry
+            if p.contract_end and p.contract_end < next_month_date:
+                continue
+                
+            # Check if cycle already exists
+            existing = InvoiceCycle.query.filter_by(project_id=p.id, invoice_month=next_month_str).first()
+            if not existing:
+                # We do not have a user in the background thread context, so we pass None or an Admin user
+                sys_user = User.query.filter_by(role="Admin").first()
+                # Target submit date is end of that next month
+                next_last_day = calendar.monthrange(next_month_date.year, next_month_date.month)[1]
+                target_date = date(next_month_date.year, next_month_date.month, next_last_day)
+                
+                create_invoice_cycle(p, next_month_str, sys_user, target_submit_date=target_date)
+                created += 1
 
     if created:
         db.session.commit()
