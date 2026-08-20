@@ -223,10 +223,17 @@ def get_visible_documents(docs, user=None):
         return list(docs)
         
     visible = []
-    # Pre-fetch permissions for performance if not Admin/Manager
-    from web.models import UserDocumentPermission
-    perms = UserDocumentPermission.query.filter_by(user_id=user.id).all()
-    allowed_doc_types = {p.doc_type_id for p in perms if p.can_prepare or p.can_approve}
+    from flask import g
+    
+    # Pre-fetch permissions for performance and cache in g to avoid N+1 queries
+    cache_key = f"_allowed_docs_{user.id}"
+    if hasattr(g, cache_key):
+        allowed_doc_types = getattr(g, cache_key)
+    else:
+        from web.models import UserDocumentPermission
+        perms = UserDocumentPermission.query.filter_by(user_id=user.id).all()
+        allowed_doc_types = {p.doc_type_id for p in perms if p.can_prepare or p.can_approve}
+        setattr(g, cache_key, allowed_doc_types)
     
     for d in docs:
         if d.doc_type_id in allowed_doc_types:
@@ -234,15 +241,27 @@ def get_visible_documents(docs, user=None):
     return visible
 
 def get_assigned_user_names(doc_type_id):
+    from flask import g
+    if not hasattr(g, "_assigned_users_cache"):
+        g._assigned_users_cache = {}
+        
+    if doc_type_id in g._assigned_users_cache:
+        return g._assigned_users_cache[doc_type_id]
+        
     from web.models import UserDocumentPermission, User
     perms = UserDocumentPermission.query.filter_by(doc_type_id=doc_type_id).all()
     user_ids = [p.user_id for p in perms if p.can_prepare or p.can_approve]
     if not user_ids:
-        return "Unassigned"
-    users = User.query.filter(User.id.in_(user_ids), User.active == True).all()
-    if not users:
-        return "Unassigned"
-    return ", ".join(u.name for u in users)
+        result = "Unassigned"
+    else:
+        users = User.query.filter(User.id.in_(user_ids), User.active == True).all()
+        if not users:
+            result = "Unassigned"
+        else:
+            result = ", ".join(u.name for u in users)
+            
+    g._assigned_users_cache[doc_type_id] = result
+    return result
 
 
 # --------------------------------------------------------------------------- #
@@ -854,10 +873,8 @@ def scheduled_sweep(today=None):
             continue
         diff = (doc.due_date - today).days
         if diff in alert_days and doc.due_date >= today:
-            if doc.employee:
-                u = User.query.filter_by(employee_id=doc.employee.id,
-                                         active=True).first()
-                if u and _guard(u.id, "Due reminder", _doc_due_msg(doc)):
+            for u in _responsible_users(doc):
+                if _guard(u.id, "Due reminder", _doc_due_msg(doc)):
                     notify(u.id, "Due reminder", _doc_due_msg(doc), "REMINDER")
                     created += 1
         elif diff < 0:
