@@ -41,6 +41,7 @@ def projects():
     from_date = request.args.get("from_date", "").strip()
     to_date = request.args.get("to_date", "").strip()
 
+    from web.models import ProjectDocumentRequirement
     q = (Project.query.options(
                 joinedload(Project.client),
                 joinedload(Project.submission_method),
@@ -49,7 +50,6 @@ def projects():
             .join(Client))
             
     if current_user.role not in ("Admin", "Manager"):
-        from web.models import ProjectDocumentRequirement
         
         user_doc_type_ids = [
             p.doc_type_id for p in current_user.permissions 
